@@ -5,7 +5,6 @@ st.title("✅ MongoDB Connection Test")
 
 # Test connection
 try:
-    # Fetch some data from the collection
     sample_data = collection.find_one()
 
     if sample_data:
