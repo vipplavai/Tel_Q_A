@@ -1,18 +1,26 @@
 import streamlit as st
-from db import collection
+from pymongo import MongoClient
 
-st.title("✅ MongoDB Connection Test")
+# Initialize connection to MongoDB
+@st.cache_resource
+def init_connection():
+    return MongoClient(st.secrets["mongo"]["uri"])
 
-# Test connection
-try:
-    sample_data = collection.find_one()
+client = init_connection()
+db = client["Q_and_A"]  # Database Name
+collection = db["content_data"]  # Collection Name
 
-    if sample_data:
-        st.success("🎉 Successfully connected to MongoDB!")
-        st.write("🔹 **Sample Data from MongoDB:**")
-        st.json(sample_data)  # Display first document
+# Streamlit UI
+st.title("📖 Fetch Content from MongoDB")
+
+st.subheader("🔍 Enter Content ID to Fetch Content")
+content_id_input = st.text_input("Enter Content ID (e.g., 000001):")
+
+if st.button("Fetch Content"):
+    content_data = collection.find_one({"content_id": content_id_input})
+
+    if content_data:
+        st.subheader("📜 Retrieved Content")
+        st.text_area("Content:", value=content_data["content"], height=300, disabled=True)
     else:
-        st.warning("⚠️ Connected, but no data found in the collection.")
-
-except Exception as e:
-    st.error(f"❌ Connection failed: {e}")
+        st.error("❌ No content found for this ID!")
