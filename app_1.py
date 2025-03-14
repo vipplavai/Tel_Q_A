@@ -1,23 +1,25 @@
 import streamlit as st
+from pymongo import MongoClient
+
+# 1) Import these internal objects for the manual rerun hack
+from streamlit.runtime.scriptrunner import script_run_context as src
+from streamlit.runtime.scriptrunner.script_run_context import RerunException
 
 st.write("Running Streamlit version:", st.__version__)
 
-from pymongo import MongoClient
+# 2) Define our custom rerun function
+def rerun():
+    """Force a Streamlit script rerun by raising an internal RerunException."""
+    raise RerunException(src.get_script_run_ctx())
 
 # Initialize connection to MongoDB
-# Use st.cache_resource to avoid re-initializing the client on every rerun.
 @st.cache_resource
 def init_connection():
-    # Replace with your actual st.secrets config if you are deploying securely.
-    # For local dev, you can just return MongoClient("your_mongo_uri")
     return MongoClient(st.secrets["mongo"]["uri"])
 
 client = init_connection()
 db = client["Q_and_A"]  # Database Name
 collection = db["content_data"]  # Collection Name
-
-def force_rerun():
-    raise RerunException(src.get_script_run_ctx())
 
 st.title("📖 Fetch & Edit Content from MongoDB")
 
@@ -32,7 +34,6 @@ if search_button:
     # Attempt to find a record matching the user-input content_id
     result = collection.find_one({"content_id": search_id})
     if result:
-        # If found, store in session so it displays below
         st.session_state["current_content_id"] = result["content_id"]
         st.session_state["questions"] = result.get("questions", [])
     else:
@@ -42,11 +43,7 @@ if search_button:
 # 2) AUTO-FETCH CONTENT WITH questions < 6 (if none is currently in session)
 # ------------------------------------------------------------------------------
 if "current_content_id" not in st.session_state:
-    # Find one document where the questions array size is less than 6
-    # Using a MongoDB aggregation expression with $expr
-    # Alternatively, you could use $where, e.g. {"$where": "this.questions.length < 6"}
     content_data = collection.find_one({"$expr": {"$lt": [{"$size": "$questions"}, 6]}})
-    
     if content_data:
         st.session_state["current_content_id"] = content_data["content_id"]
         st.session_state["questions"] = content_data.get("questions", [])
@@ -72,45 +69,42 @@ if content_data:
         st.write("📋 **Existing Questions (Editable):**")
         updated_questions = []
         
-        # Loop over existing questions for editing
         for index, q in enumerate(current_questions, start=1):
             st.write(f"**Question {index}:**")
             question_text = st.text_area(
-                f"Edit Question {index}", 
-                value=q["question"], 
+                f"Edit Question {index}",
+                value=q["question"],
                 key=f"edit_q_{index}"
             )
             difficulty = st.selectbox(
-                f"Difficulty Level {index}", 
-                ["easy", "medium", "hard"], 
+                f"Difficulty Level {index}",
+                ["easy", "medium", "hard"],
                 index=["easy", "medium", "hard"].index(q["difficulty"]),
                 key=f"edit_d_{index}"
             )
-            # In case there's an "answer" field you want to keep or allow editing:
             answer_text = q.get("answer", "")
 
             updated_questions.append({
-                "question": question_text, 
-                "difficulty": difficulty, 
+                "question": question_text,
+                "difficulty": difficulty,
                 "answer": answer_text
             })
 
-        # Button to update existing questions
         if st.button("Save Changes"):
             collection.update_one(
                 {"content_id": st.session_state["current_content_id"]},
                 {"$set": {"questions": updated_questions}}
             )
             st.success("✅ Changes saved successfully!")
-            
+
             # Check if we now have >= 6 questions. If so, auto-fetch next
             if len(updated_questions) >= 6:
                 st.session_state.pop("current_content_id", None)
                 st.session_state.pop("questions", None)
                 st.info("This content has 6 or more questions. Fetching next...")
-                st.experimental_rerun()
+                rerun()
             else:
-                st.experimental_rerun()
+                rerun()
 
     # ------------------------------------------------------------------------------
     # ADD NEW QUESTION
@@ -136,18 +130,16 @@ if content_data:
                 upsert=True
             )
             st.success("✅ New question added successfully!")
-            
-            # Check if we now have >= 6 questions
+
+            # Check how many questions exist now
             latest_doc = collection.find_one({"content_id": st.session_state["current_content_id"]})
             if len(latest_doc.get("questions", [])) >= 6:
-                # If we now have 6 or more, auto-fetch next
                 st.session_state.pop("current_content_id", None)
                 st.session_state.pop("questions", None)
                 st.info("This content now has 6 or more questions. Fetching next...")
-                st.experimental_rerun()
+                rerun()
             else:
-                # Otherwise, just rerun to refresh
-                st.experimental_rerun()
+                rerun()
         else:
             st.error("⚠️ Please enter a question before saving!")
 
@@ -156,6 +148,6 @@ if content_data:
 # ------------------------------------------------------------------------------
 st.subheader("🔄 Fetch Next Content (with < 6 questions)")
 if st.button("Fetch Next Content"):
-    st.session_state.pop("current_content_id", None)  # Clear session
+    st.session_state.pop("current_content_id", None)
     st.session_state.pop("questions", None)
-    force_rerun()
+    rerun()
