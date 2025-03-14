@@ -16,6 +16,9 @@ client = init_connection()
 db = client["Q_and_A"]  # Database Name
 collection = db["content_data"]  # Collection Name
 
+def force_rerun():
+    raise RerunException(src.get_script_run_ctx())
+
 st.title("📖 Fetch & Edit Content from MongoDB")
 
 # ------------------------------------------------------------------------------
@@ -155,4 +158,4 @@ st.subheader("🔄 Fetch Next Content (with < 6 questions)")
 if st.button("Fetch Next Content"):
     st.session_state.pop("current_content_id", None)  # Clear session
     st.session_state.pop("questions", None)
-    st.experimental_rerun()
+    force_rerun()
