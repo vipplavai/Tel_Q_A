@@ -1,4 +1,7 @@
 import streamlit as st
+
+st.write("Running Streamlit version:", st.__version__)
+
 from pymongo import MongoClient
 
 # Initialize connection to MongoDB
