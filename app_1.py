@@ -88,7 +88,7 @@ if "current_content_id" not in st.session_state:
     fetch_next_content()
 
 # ------------------------------------------------------------------------------
-# 6) DISPLAY & EDIT CONTENT
+# 6) DISPLAY, EDIT & DELETE CONTENT
 # ------------------------------------------------------------------------------
 if "current_content_id" in st.session_state:
     content_data = collection.find_one({"content_id": st.session_state["current_content_id"]})
@@ -101,20 +101,39 @@ if "current_content_id" in st.session_state:
 
         # 6a) EDIT EXISTING QUESTIONS
         if questions_list:
-            st.write("📝 **Edit Existing Questions**")
+            st.write("📝 **Edit or Delete Questions**")
             updated_questions = []
+            delete_indices = []
+
             for idx, q in enumerate(questions_list, start=1):
-                question_text = st.text_area(f"Edit Question {idx}", value=q["question"], key=f"edit_q_{idx}")
-                difficulty = st.selectbox(f"Difficulty {idx}", ["easy", "medium", "hard"], 
-                                          index=["easy", "medium", "hard"].index(q["difficulty"]), key=f"edit_d_{idx}")
+                col1, col2 = st.columns([8, 1])
+                with col1:
+                    question_text = st.text_area(f"Edit Question {idx}", value=q["question"], key=f"edit_q_{idx}")
+                    difficulty = st.selectbox(f"Difficulty {idx}", ["easy", "medium", "hard"], 
+                                              index=["easy", "medium", "hard"].index(q["difficulty"]), key=f"edit_d_{idx}")
+                with col2:
+                    delete_flag = st.checkbox(f"🗑️", key=f"delete_{idx}")
+                    if delete_flag:
+                        delete_indices.append(idx - 1)
+
                 answer_text = q.get("answer", "")
                 updated_questions.append({"question": question_text, "difficulty": difficulty, "answer": answer_text})
 
+            # Save Changes
             if st.button("Save Changes"):
                 collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": updated_questions}})
                 log_user_action(content_data["content_id"], "edited questions")
                 st.success("✅ Changes saved successfully!")
                 st.rerun()
+
+            # Delete Selected Questions
+            if delete_indices:
+                if st.button("Delete Selected Questions"):
+                    new_questions = [q for i, q in enumerate(questions_list) if i not in delete_indices]
+                    collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": new_questions}})
+                    log_user_action(content_data["content_id"], "deleted questions")
+                    st.success("✅ Selected questions deleted successfully!")
+                    st.rerun()
 
         # 6b) ADD A NEW QUESTION
         st.subheader("➕ Add a New Question")
