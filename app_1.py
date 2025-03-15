@@ -24,7 +24,12 @@ def hash_password(password):
 
 def verify_password(password, hashed_password):
     """Verify password against stored bcrypt hash."""
+    # Ensure hashed_password is a string
+    if isinstance(hashed_password, bytes):
+        hashed_password = hashed_password.decode("utf-8")
+
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+
 
 def register_user(username, password):
     """Registers a new user by hashing the password and storing it in MongoDB."""
@@ -48,18 +53,22 @@ def authenticate_user(username, password):
     if not user:
         return False, "❌ Username does not exist."
 
-    # Check if the hashed_password field exists
+    # Check if hashed_password exists
     if "hashed_password" not in user:
         return False, "❌ Password field missing in database. Please contact admin."
 
-    # Extract the hashed password correctly
     hashed_password = user["hashed_password"]
 
-    # Verify the password using bcrypt
+    # If the stored password is in Binary format, decode it
+    if isinstance(hashed_password, bytes):
+        hashed_password = hashed_password.decode("utf-8")
+
+    # Verify password using bcrypt
     if not verify_password(password, hashed_password):
         return False, "❌ Incorrect password."
 
     return True, "✅ Login successful!"
+
 
 
 def is_authenticated():
