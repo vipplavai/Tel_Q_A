@@ -109,7 +109,7 @@ def fetch_next_content():
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
-        st.session_state["new_question"] = ""  # Clear input field when fetching new content
+        st.session_state["new_question"] = ""  # Ensure the question input field is cleared
     else:
         st.warning(get_text("no_more_content"))
 
@@ -125,19 +125,11 @@ def fetch_content_by_id(content_id):
         st.error(f"❌ {get_text('no_more_content')} {content_id}")
 
 # ------------------------------------------------------------------------------
-# 6) LOG USER ACTIONS
+# 6) CONTENT MANAGEMENT FUNCTION
 # ------------------------------------------------------------------------------
-def log_user_action(content_id, action):
-    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    content_collection.update_one(
-        {"content_id": content_id},
-        {"$push": {"users": {"username": st.session_state["authenticated_user"], "action": action, "datetime": timestamp_str}}},
-        upsert=True
-    )
+def clear_question_input():
+    st.session_state["new_question"] = ""
 
-# ------------------------------------------------------------------------------
-# 7) CONTENT MANAGEMENT FUNCTION
-# ------------------------------------------------------------------------------
 def content_management():
     st.subheader(get_text("content_manager"))
 
@@ -156,41 +148,26 @@ def content_management():
         questions = content_data.get("questions", [])
         st.write(f"{get_text('total_questions')} {len(questions)}")
 
-        updated_questions = []
-        delete_indices = []
-        for idx, q in enumerate(questions, start=1):
-            question_text = st.text_area(f"{get_text('edit_question')} {idx}", value=q["question"], key=f"edit_q_{idx}")
-            delete_flag = st.checkbox(f"{get_text('delete')} {idx}", key=f"delete_{idx}")
-            if delete_flag:
-                delete_indices.append(idx - 1)
-            updated_questions.append({"question": question_text})
-
-        if st.button(get_text("save_changes")):
-            content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": updated_questions}})
-            log_user_action(content_data["content_id"], "edited questions")
-            st.success("✅ Changes saved successfully!")
-            st.rerun()
-
         st.subheader(get_text("add_question"))
         new_question = st.text_area(get_text("enter_question"), key="new_question")
-        if st.button(get_text("save_question")):
+        
+        if st.button(get_text("save_question"), on_click=clear_question_input):
             if new_question.strip():
                 content_collection.update_one({"content_id": content_data["content_id"]}, {"$push": {"questions": {"question": new_question}}}, upsert=True)
-                log_user_action(content_data["content_id"], "added question")
                 st.success(get_text("success_question"))
-                st.session_state["new_question"] = ""
                 st.rerun()
+            else:
+                st.error(get_text("empty_warning"))
 
-    if st.button(get_text("skip_fetch")):
-        log_user_action(st.session_state["current_content_id"], "skipped")
+    if st.button(get_text("skip_fetch"), on_click=clear_question_input):
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
-        st.session_state.pop("current_content_id")
+        st.session_state.pop("current_content_id", None)
         st.session_state.pop("questions", None)
         fetch_next_content()
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 8) MAIN APP: LOGIN
+# 7) MAIN APP: LOGIN
 # ------------------------------------------------------------------------------
 st.title(get_text("title"))
 
