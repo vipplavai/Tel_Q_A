@@ -76,16 +76,13 @@ def hash_password(password):
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 def verify_password(password, hashed_password):
-    if isinstance(hashed_password, bytes):
-        hashed_password = hashed_password.decode("utf-8")
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 def register_user(username, password):
     existing_user = users_collection.find_one({"username": username})
     if existing_user:
         return False, "❌ Username already exists."
-    hashed_password = hash_password(password)
-    users_collection.insert_one({"username": username, "hashed_password": hashed_password})
+    users_collection.insert_one({"username": username, "hashed_password": hash_password(password)})
     return True, "✅ Registration successful! Please log in."
 
 def authenticate_user(username, password):
@@ -109,19 +106,12 @@ def logout_user():
 # 4) FETCH NEXT CONTENT (Prioritizing Empty Questions)
 # ------------------------------------------------------------------------------
 def fetch_next_content():
-    if "skipped_ids" not in st.session_state:
-        st.session_state["skipped_ids"] = []
-
-    query_empty = {"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}}
-    doc = content_collection.find_one(query_empty)
+    query = {"questions": {"$size": 0}}
+    doc = content_collection.find_one(query)
 
     if not doc:
-        query_lt6 = {"$expr": {"$lt": [{"$size": "$questions"}, 6]}, "content_id": {"$nin": st.session_state["skipped_ids"]}}
-        doc = content_collection.find_one(query_lt6)
-
-    if not doc and st.session_state["skipped_ids"]:
-        skipped_id = st.session_state["skipped_ids"].pop(0)
-        doc = content_collection.find_one({"content_id": skipped_id})
+        query = {"$expr": {"$lt": [{"$size": "$questions"}, 6]}}
+        doc = content_collection.find_one(query)
 
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
