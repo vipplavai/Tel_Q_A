@@ -1,6 +1,5 @@
 import streamlit as st
 from pymongo import MongoClient
-import bcrypt
 from datetime import datetime
 
 # ------------------------------------------------------------------------------
@@ -16,28 +15,8 @@ users_collection = db["users"]
 content_collection = db["content_data"]
 
 # ------------------------------------------------------------------------------
-# 2) USER AUTHENTICATION FUNCTIONS
+# 2) USER AUTHENTICATION (Username-Only Login)
 # ------------------------------------------------------------------------------
-def hash_password(password):
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-def verify_password(password, hashed_password):
-    if isinstance(hashed_password, bytes):
-        hashed_password = hashed_password.decode("utf-8")
-    return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
-
-def register_user(username, password):
-    if users_collection.find_one({"username": username}):
-        return False, "❌ Username already exists."
-    users_collection.insert_one({"username": username, "hashed_password": hash_password(password)})
-    return True, "✅ Registration successful! Please log in."
-
-def authenticate_user(username, password):
-    user = users_collection.find_one({"username": username})
-    if not user or not verify_password(password, user.get("hashed_password", "")):
-        return False, "❌ Invalid username or password."
-    return True, "✅ Login successful!"
-
 def is_authenticated():
     return "authenticated_user" in st.session_state
 
@@ -46,6 +25,12 @@ def login_user(username):
 
 def logout_user():
     st.session_state.pop("authenticated_user", None)
+
+def authenticate_or_register_user(username):
+    """Logs in an existing user or registers a new one automatically."""
+    if not users_collection.find_one({"username": username}):
+        users_collection.insert_one({"username": username})  # Auto-register if new user
+    login_user(username)
 
 # ------------------------------------------------------------------------------
 # 3) FETCH NEXT CONTENT (Prioritizing Empty Questions)
@@ -158,31 +143,19 @@ def content_management():
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 7) MAIN APP: LOGIN & AUTHENTICATION
+# 7) MAIN APP: LOGIN & AUTHENTICATION (USERNAME ONLY)
 # ------------------------------------------------------------------------------
 st.title("🔒 User Authentication")
 
 if not is_authenticated():
-    option = st.radio("Choose an option:", ["Login", "Register"])
-
-    if option == "Login":
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            success, message = authenticate_user(username, password)
-            if success:
-                login_user(username)
-                fetch_next_content()
-                st.rerun()
-            else:
-                st.error(message)
-    else:
-        new_username = st.text_input("New Username")
-        new_password = st.text_input("New Password", type="password")
-        if st.button("Register"):
-            success, message = register_user(new_username, new_password)
-            st.success(message) if success else st.error(message)
-
+    username = st.text_input("Enter your Username to Login:")
+    if st.button("Login"):
+        if username.strip():
+            authenticate_or_register_user(username)  # Auto-login or register new user
+            fetch_next_content()  # Fetch next available content after login
+            st.rerun()
+        else:
+            st.error("⚠️ Please enter a username to continue.")
 else:
     st.success(f"✅ Welcome, {st.session_state['authenticated_user']}!")
     if st.button("Logout"):
