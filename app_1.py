@@ -39,9 +39,14 @@ def fetch_next_content():
     if "skipped_ids" not in st.session_state:
         st.session_state["skipped_ids"] = []
 
+    # Priority 1: Fetch content with empty questions
     doc = content_collection.find_one({"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
+
+    # Priority 2: Fetch content with <6 questions
     if not doc:
         doc = content_collection.find_one({"$expr": {"$lt": [{"$size": "$questions"}, 6]}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
+
+    # Priority 3: Fetch skipped content
     if not doc and st.session_state["skipped_ids"]:
         doc = content_collection.find_one({"content_id": st.session_state["skipped_ids"].pop(0)})
 
@@ -106,19 +111,21 @@ def content_management():
         delete_indices = []
         for idx, q in enumerate(questions, start=1):
             question_text = st.text_area(f"Edit Question {idx}", value=q["question"], key=f"edit_q_{idx}")
-            delete_flag = st.checkbox(f"🗑 {idx}", key=f"delete_{idx}")
+            delete_flag = st.checkbox(f"🗑 Delete {idx}", key=f"delete_{idx}")
             if delete_flag:
                 delete_indices.append(idx - 1)
             updated_questions.append({"question": question_text})
 
         if st.button("Save Changes"):
             content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": updated_questions}})
+            log_user_action(content_data["content_id"], "edited questions")
             st.success("✅ Changes saved successfully!")
             st.rerun()
 
         if delete_indices:
             new_questions = [q for i, q in enumerate(questions) if i not in delete_indices]
             content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": new_questions}})
+            log_user_action(content_data["content_id"], "deleted questions")
             st.success("✅ Deleted selected questions!")
             st.rerun()
 
@@ -131,12 +138,15 @@ def content_management():
                     {"$push": {"questions": {"question": new_question}}},
                     upsert=True
                 )
+                log_user_action(content_data["content_id"], "added question")
                 st.success("✅ New question added successfully!")
                 st.rerun()
             else:
                 st.error("⚠️ Please enter a question before saving!")
 
-    if st.button("Fetch Next Content"):
+    if st.button("Skip & Fetch Next Content"):
+        log_user_action(st.session_state["current_content_id"], "skipped")
+        st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
         fetch_next_content()
