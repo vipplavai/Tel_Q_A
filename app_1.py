@@ -99,37 +99,21 @@ def fetch_next_content():
         st.session_state["skipped_ids"] = []
 
     doc = content_collection.find_one({"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
-
     if not doc:
         doc = content_collection.find_one({"$expr": {"$lt": [{"$size": "$questions"}, 6]}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
-
     if not doc and st.session_state["skipped_ids"]:
         doc = content_collection.find_one({"content_id": st.session_state["skipped_ids"].pop(0)})
 
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
-        st.session_state["new_question"] = ""  # Ensure the question input field is cleared
+        st.session_state["new_question"] = ""  # Ensure new input is cleared
     else:
         st.warning(get_text("no_more_content"))
 
 # ------------------------------------------------------------------------------
-# 5) SEARCH FOR CONTENT BY `content_id`
+# 5) CONTENT MANAGEMENT FUNCTION
 # ------------------------------------------------------------------------------
-def fetch_content_by_id(content_id):
-    found = content_collection.find_one({"content_id": content_id})
-    if found:
-        st.session_state["current_content_id"] = found["content_id"]
-        st.session_state["questions"] = found.get("questions", [])
-    else:
-        st.error(f"❌ {get_text('no_more_content')} {content_id}")
-
-# ------------------------------------------------------------------------------
-# 6) CONTENT MANAGEMENT FUNCTION
-# ------------------------------------------------------------------------------
-def clear_question_input():
-    st.session_state["new_question"] = ""
-
 def content_management():
     st.subheader(get_text("content_manager"))
 
@@ -148,26 +132,29 @@ def content_management():
         questions = content_data.get("questions", [])
         st.write(f"{get_text('total_questions')} {len(questions)}")
 
+        for idx, q in enumerate(questions, start=1):
+            st.text_area(f"{get_text('edit_question')} {idx}", value=q["question"], key=f"edit_q_{idx}")
+
         st.subheader(get_text("add_question"))
         new_question = st.text_area(get_text("enter_question"), key="new_question")
-        
-        if st.button(get_text("save_question"), on_click=clear_question_input):
+
+        if st.button(get_text("save_question")):
             if new_question.strip():
                 content_collection.update_one({"content_id": content_data["content_id"]}, {"$push": {"questions": {"question": new_question}}}, upsert=True)
                 st.success(get_text("success_question"))
+                st.session_state["new_question"] = ""  # Reset the input field
                 st.rerun()
-            else:
-                st.error(get_text("empty_warning"))
 
-    if st.button(get_text("skip_fetch"), on_click=clear_question_input):
+    if st.button(get_text("skip_fetch")):
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
         st.session_state.pop("current_content_id", None)
         st.session_state.pop("questions", None)
+        st.session_state["new_question"] = ""  # Clear input field
         fetch_next_content()
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 7) MAIN APP: LOGIN
+# 6) MAIN APP: LOGIN
 # ------------------------------------------------------------------------------
 st.title(get_text("title"))
 
