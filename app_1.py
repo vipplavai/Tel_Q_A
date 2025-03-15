@@ -5,11 +5,6 @@ import bcrypt  # Requires "pip install bcrypt"
 
 # ------------------------------------------------------------------------------
 # 0) Translation Data & Instructions
-#
-# We store all user-facing text for both English & Telugu in dictionaries.
-# We also have a single dictionary "INSTRUCTIONS" holding the full instructions
-# in a docstring for each language. The docstring uses triple double-quotes,
-# and inside it we use triple single-quotes (''') to display code blocks.
 # ------------------------------------------------------------------------------
 LANG_TEXT = {
     "English": {
@@ -218,6 +213,7 @@ Once reviewed, click Submit Questions to finalize.
 """
 }
 
+
 # ------------------------------------------------------------------------------
 # 1) Initialize connection to MongoDB
 # ------------------------------------------------------------------------------
@@ -243,10 +239,6 @@ def check_password(password: str, hashed: bytes) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed)
 
 def register_user(username: str, password: str) -> bool:
-    """
-    Attempt to register a new user.
-    Returns True if registration is successful, False if username already exists.
-    """
     existing_user = users_collection.find_one({"username": username})
     if existing_user:
         return False
@@ -260,24 +252,14 @@ def register_user(username: str, password: str) -> bool:
     return True
 
 def login_user(username: str, password: str) -> bool:
-    """
-    Attempt to log in user.
-    Returns True if credentials match, else False.
-    """
     user_doc = users_collection.find_one({"username": username})
     if not user_doc:
         return False
     hashed_pw = user_doc["hashed_password"]
     return check_password(password, hashed_pw)
 
-# ------------------------------------------------------------------------------
-# 3) Log user actions (skip, add, edit, delete)
-#    to BOTH the content document and the user's record
-# ------------------------------------------------------------------------------
 def log_user_action(content_id, action, username):
     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Log in content_data
     content_collection.update_one(
         {"content_id": content_id},
         {
@@ -291,7 +273,6 @@ def log_user_action(content_id, action, username):
         },
         upsert=True
     )
-    # Log in user's doc
     users_collection.update_one(
         {"username": username},
         {
@@ -322,15 +303,13 @@ if "skipped_ids" not in st.session_state:
 L = LANG_TEXT[st.session_state["language"]]
 
 # ------------------------------------------------------------------------------
-# 5) Top Row Layout: Title on the left, Language & Instructions button on the right
+# 5) Top Row: Title (left), Language + Instructions (right)
 # ------------------------------------------------------------------------------
 top_left, top_right = st.columns([6, 2])
-
 with top_left:
     st.title(L["app_title"])
 
 with top_right:
-    # Language selection on the top-right
     lang_choice = st.selectbox(
         "Language / భాష:",
         ["English", "Telugu"],
@@ -340,12 +319,11 @@ with top_right:
         st.session_state["language"] = lang_choice
         L = LANG_TEXT[st.session_state["language"]]
 
-    # Instructions button next to language
     if st.button(L["instructions_btn"]):
         st.session_state["show_instructions"] = not st.session_state["show_instructions"]
 
 # ------------------------------------------------------------------------------
-# 6) If instructions are toggled on, show them at the top (simulate a pop-up)
+# 6) Show instructions if toggled
 # ------------------------------------------------------------------------------
 if st.session_state["show_instructions"]:
     st.markdown("----")
@@ -354,18 +332,15 @@ if st.session_state["show_instructions"]:
     st.markdown("----")
 
 # ------------------------------------------------------------------------------
-# 7) If user is not logged in, show login/register
+# 7) Login / Register if not logged in
 # ------------------------------------------------------------------------------
 if not st.session_state["logged_in"]:
-    auth_choice = st.radio(
-        L["choose_action"],
-        [L["login_label"], L["register_label"]]
-    )
-
+    auth_choice = st.radio(L["choose_action"], [L["login_label"], L["register_label"]], key="auth_radio")
+    
     if auth_choice == L["register_label"]:
-        reg_username = st.text_input(L["new_username"])
-        reg_password = st.text_input(L["new_password"], type="password")
-        if st.button(L["register_btn"]):
+        reg_username = st.text_input(L["new_username"], key="reg_user")
+        reg_password = st.text_input(L["new_password"], type="password", key="reg_pass")
+        if st.button(L["register_btn"], key="register_btn"):
             if reg_username.strip() and reg_password.strip():
                 success = register_user(reg_username, reg_password)
                 if success:
@@ -374,24 +349,22 @@ if not st.session_state["logged_in"]:
                     st.error(L["register_error"])
             else:
                 st.error(L["fill_error"])
-
-    else:  # login
-        log_username = st.text_input(L["login_username"])
-        log_password = st.text_input(L["login_password"], type="password")
-        if st.button(L["login_btn"]):
+    else:
+        log_username = st.text_input(L["login_username"], key="login_user")
+        log_password = st.text_input(L["login_password"], type="password", key="login_pass")
+        if st.button(L["login_btn"], key="login_btn"):
             if log_username.strip() and log_password.strip():
                 success = login_user(log_username, log_password)
                 if success:
                     st.session_state["logged_in"] = True
                     st.session_state["username"] = log_username
-                    # Auto-show instructions after a successful login
                     st.session_state["show_instructions"] = True
                     st.stop()
                 else:
                     st.error(L["login_error"])
             else:
                 st.error(L["login_fill_error"])
-
+    
     st.stop()
 else:
     st.markdown(L["welcome_user"].format(username=st.session_state["username"]))
@@ -399,8 +372,8 @@ else:
 # ------------------------------------------------------------------------------
 # 8) SEARCH BOX
 # ------------------------------------------------------------------------------
-search_id = st.text_input(L["search_id"])
-search_button = st.button(L["search_btn"])
+search_id = st.text_input(L["search_id"], key="search_box")
+search_button = st.button(L["search_btn"], key="search_btn")
 if search_button:
     found = content_collection.find_one({"content_id": search_id})
     if found:
@@ -413,19 +386,12 @@ if search_button:
 # 9) AUTO-FETCH LOGIC
 # ------------------------------------------------------------------------------
 def fetch_next_content():
-    """
-    Sets st.session_state["current_content_id"] to the next appropriate item:
-    - content with empty questions
-    - else content with questions < 6
-    - else from skip list
-    """
     query_empty = {
         "questions": {"$size": 0},
         "content_id": {"$nin": st.session_state["skipped_ids"]},
     }
     doc = content_collection.find_one(query_empty)
     if not doc:
-        # Next, try doc with questions < 6
         query_lt6 = {
             "$expr": {"$lt": [{"$size": "$questions"}, 6]},
             "content_id": {"$nin": st.session_state["skipped_ids"]},
@@ -433,7 +399,6 @@ def fetch_next_content():
         doc = content_collection.find_one(query_lt6)
 
     if not doc:
-        # Then from skip list if available
         if st.session_state["skipped_ids"]:
             skipped_id = st.session_state["skipped_ids"].pop(0)
             doc = content_collection.find_one({"content_id": skipped_id})
@@ -454,8 +419,7 @@ if "current_content_id" not in st.session_state:
 if "current_content_id" in st.session_state:
     content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
     if content_data:
-        st.subheader(L["content_id_retrieved"].format(content_id=content_data['content_id']))
-
+        st.subheader(L["content_id_retrieved"].format(content_id=content_data["content_id"]))
         st.text_area(L["content_box_label"], value=content_data.get("content", ""), height=300, disabled=True)
 
         questions_list = content_data.get("questions", [])
@@ -473,7 +437,6 @@ if "current_content_id" in st.session_state:
                     value=q["question"],
                     key=f"edit_q_{idx}"
                 )
-                # map difficulty to index
                 diff_options = ["easy", "medium", "hard"]
                 difficulty_index = diff_options.index(q["difficulty"])
                 difficulty_label = L["difficulty_level_label"].format(idx=idx)
@@ -485,9 +448,8 @@ if "current_content_id" in st.session_state:
                 )
                 answer_text = q.get("answer", "")
 
-                # Delete?
+                # "Delete question" checkbox
                 delete_flag = st.checkbox(L["delete_question_label"].format(idx=idx), key=f"delete_{idx}")
-
                 if not delete_flag:
                     updated_questions.append({
                         "question": question_text,
@@ -497,25 +459,26 @@ if "current_content_id" in st.session_state:
                 else:
                     st.warning(L["delete_warning"].format(idx=idx))
 
-            if st.button(L["save_changes_btn"]):
+            if st.button(L["save_changes_btn"], key="save_changes_btn"):
                 content_collection.update_one(
                     {"content_id": content_data["content_id"]},
                     {"$set": {"questions": updated_questions}}
                 )
+                # Log user actions
                 if len(updated_questions) < len(questions_list):
                     log_user_action(content_data["content_id"], "deleted question(s)", st.session_state["username"])
                 if updated_questions != questions_list:
                     log_user_action(content_data["content_id"], "edited questions", st.session_state["username"])
 
                 st.success(L["changes_saved"])
-                st.stop()
+                # Do NOT call st.stop() here, so the rest of the page (including "Fetch Next") is visible.
 
         # 10b) ADD NEW
         st.subheader(L["add_new_question_subheader"])
-        new_question = st.text_area(L["enter_new_q_label"], height=100)
-        new_difficulty = st.selectbox(L["difficulty_select_label"], ["easy", "medium", "hard"])
+        new_question = st.text_area(L["enter_new_q_label"], height=100, key="new_ques")
+        new_difficulty = st.selectbox(L["difficulty_select_label"], ["easy", "medium", "hard"], key="new_diff")
 
-        if st.button(L["save_question_btn"]):
+        if st.button(L["save_question_btn"], key="save_question_btn"):
             if new_question.strip():
                 content_collection.update_one(
                     {"content_id": content_data["content_id"]},
@@ -532,7 +495,7 @@ if "current_content_id" in st.session_state:
                 )
                 log_user_action(content_data["content_id"], "added question", st.session_state["username"])
                 st.success(L["changes_saved"])
-                st.stop()
+                # Again, do NOT call st.stop() so the "Fetch Next Content" button is shown.
             else:
                 st.error(L["empty_q_error"])
 
@@ -540,7 +503,7 @@ if "current_content_id" in st.session_state:
 # 11) FETCH NEXT (SKIP)
 # ------------------------------------------------------------------------------
 st.subheader(L["fetch_next_subheader"])
-if st.button(L["fetch_next_btn"]):
+if st.button(L["fetch_next_btn"], key="fetch_next_btn"):
     current_id = st.session_state.get("current_content_id")
     if current_id:
         st.session_state["skipped_ids"].append(current_id)
