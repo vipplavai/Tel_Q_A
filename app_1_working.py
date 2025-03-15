@@ -4,12 +4,7 @@ from datetime import datetime
 import bcrypt  # Requires "pip install bcrypt"
 
 # ------------------------------------------------------------------------------
-# 0) Translation Data & Instructions
-#
-# We store all user-facing text for both English & Telugu in dictionaries.
-# We also have a single dictionary "INSTRUCTIONS" holding the full instructions
-# in a docstring for each language. The docstring uses triple double-quotes,
-# and inside it we use triple single-quotes (''') to display code blocks.
+# 0) Translation Data
 # ------------------------------------------------------------------------------
 LANG_TEXT = {
     "English": {
@@ -49,8 +44,7 @@ LANG_TEXT = {
         "save_question_btn": "Save Question",
         "empty_q_error": "⚠️ Please enter a question before saving!",
         "fetch_next_subheader": "🔄 Fetch Next Content (Skip this one)",
-        "fetch_next_btn": "Fetch Next Content",
-        "instructions_btn": "Instructions"
+        "fetch_next_btn": "Fetch Next Content"
     },
     "Telugu": {
         "app_title": "📖 ప్రశ్న ఇన్సర్టర్ సాధనం @vipplavAI",
@@ -89,133 +83,8 @@ LANG_TEXT = {
         "save_question_btn": "ప్రశ్నని సేవ్ చేయండి",
         "empty_q_error": "⚠️ సేవ్ చేసే ముందు దయచేసి ఒక ప్రశ్నను నమోదు చేయండి!,",
         "fetch_next_subheader": "🔄 మరో కంటెంట్ తీసుకురండి (ఇది స్కిప్ చేయండి)",
-        "fetch_next_btn": "తదుపరి కంటెంట్ తీసుకురండి",
-        "instructions_btn": "నిర్దేశాలు"
+        "fetch_next_btn": "తదుపరి కంటెంట్ తీసుకురండి"
     }
-}
-
-INSTRUCTIONS = {
-    "English": """\
-3. Framing Quality Questions in Three Segments
-
-Once the content is displayed, questions must be framed in three difficulty levels:
-
-**Easy Questions (Single-word answers)**
-- Goal: To assess basic recall of key terms, names, or definitions.
-- Example Format:
-'''
-Q: What is the capital of France?
-A: Paris
-'''
-
-**Medium Questions (2-3 line answers)**
-- Goal: To check comprehension and encourage slightly detailed responses.
-- Example Format:
-'''
-Q: Why is the Eiffel Tower considered an architectural marvel?
-A: The Eiffel Tower is a marvel because it was the tallest structure at the time 
-   of its completion and is made of iron lattice, showcasing unique engineering.
-'''
-
-**Hard Questions (4-6 line answers)**
-- Goal: To encourage critical thinking and detailed explanations.
-- Example Format:
-'''
-Q: How did the construction of the Eiffel Tower impact Paris’s tourism industry?
-A: The Eiffel Tower significantly boosted tourism in Paris by becoming an iconic landmark. 
-   Over the years, it attracted millions of visitors, contributed to the economy, 
-   and became a symbol of France’s artistic and engineering excellence.
-'''
-
-4. Adding or Editing Questions
-
-At least 6 questions must be added per content piece.
-
-Steps to Add Questions:
-1. Navigate to the Question Management Section.
-2. Click on Add New Question.
-3. Select the Question Difficulty Level (Easy, Medium, Hard).
-4. Enter the Question and Answer in the respective fields.
-5. Click Save Question to store it in the system.
-6. Repeat this process until a minimum of 6 questions are added.
-
-Steps to Edit a Question:
-1. Navigate to the Question List under the relevant content.
-2. Click on the Edit button next to the question you want to modify.
-3. Make the necessary changes to the question or answer.
-4. Click Save Changes to update the question.
-
-5. Reviewing and Finalizing Questions
-
-Before submission, ensure all framed questions meet quality standards:
-✔ Are the questions clear and concise?
-✔ Do the answers match the difficulty level?
-✔ Are there at least 6 questions (2 per level)?
-✔ Do they cover different aspects of the content?
-
-Once reviewed, click Submit Questions to finalize.
-""",
-    "Telugu": """\
-3. మూడు విభాగాలలో నాణ్యమైన ప్రశ్నలను రూపొందించడం
-
-కంటెంట్ ప్రదర్శించబడిన తర్వాత, ప్రశ్నలను మూడు క్లిష్ట స్థాయిలలో రూపొందించాలి:
-
-**సులభమైన ప్రశ్నలు (ఒకే-పద సమాధానాలు)**
-- లక్ష్యం: కీలక పదాలు, పేర్లు లేదా నిర్వచనాల ప్రాథమిక జ్ఞాపకాలను అంచనా వేయడానికి.
-- ఉదాహరణ ఫార్మాట్:
-'''
-ప్ర: ఫ్రాన్స్ రాజధాని ఏమిటి?
-జ: పారిస్
-'''
-
-**మధ్యస్థ ప్రశ్నలు (2-3 లైన్ సమాధానాలు)**
-- లక్ష్యం: అవగాహనను తనిఖీ చేయడానికి మరియు కొద్దిగా వివరణాత్మక ప్రతిస్పందనలను ప్రోత్సహించడానికి.
-- ఉదాహరణ ఫార్మాట్:
-'''
-ప్ర: ఐఫిల్ టవర్‌ను నిర్మాణ అద్భుతంగా ఎందుకు పరిగణిస్తారు?
-జ: ఐఫిల్ టవర్ ఒక అద్భుతం ఎందుకంటే ఇది దాని నిర్మాణం పూర్తయిన సమయంలో 
-   ఎత్తైన నిర్మాణం మరియు ఇనుప లాటిస్‌తో తయారు చేయబడింది, 
-   ఇది ప్రత్యేకమైన ఇంజనీరింగ్‌ను ప్రదర్శిస్తుంది.
-'''
-
-**కఠినమైన ప్రశ్నలు (4-6 లైన్ సమాధానాలు)**
-- లక్ష్యం: విమర్శనాత్మక ఆలోచన మరియు వివరణాత్మక వివరణలను ప్రోత్సహించడానికి.
-- ఉదాహరణ ఫార్మాట్:
-'''
-ప్ర: ఐఫిల్ టవర్ నిర్మాణం పారిస్ పర్యాటక పరిశ్రమను ఎలా ప్రభావితం చేసింది?
-జ: ఐఫిల్ టవర్ పారిస్‌లో పర్యాటకాన్ని ఒక ఐకానిక్ ల్యాండ్‌మార్క్‌గా మార్చడం ద్వారా గణనీయంగా పెంచింది. 
-   సంవత్సరాలుగా, ఇది మిలియన్ల మంది సందర్శకులను ఆకర్షించింది, ఆర్థిక వ్యవస్థకు దోహదపడింది 
-   మరియు ఫ్రాన్స్ యొక్క కళాత్మక మరియు ఇంజనీరింగ్ నైపుణ్యానికి చిహ్నంగా మారింది.
-'''
-
-4. ప్రశ్నలను జోడించడం లేదా సవరించడం
-
-కంటెంట్ ముక్కకు కనీసం 6 ప్రశ్నలు జోడించాలి.
-
-ప్రశ్నలను జోడించడానికి దశలు:
-1. ప్రశ్న నిర్వహణ విభాగానికి నావిగేట్ చేయండి.
-2. కొత్త ప్రశ్నను జోడించుపై క్లిక్ చేయండి.
-3. ప్రశ్న క్లిష్టత స్థాయిని ఎంచుకోండి (సులభమైన, మధ్యస్థమైన, కఠినమైనది).
-4. సంబంధించిన ఫీల్డ్‌లలో ప్రశ్న మరియు సమాధానాన్ని నమోదు చేయండి.
-5. సిస్టమ్‌లో నిల్వ చేయడానికి ప్రశ్నను సేవ్ చేయి క్లిక్ చేయండి.
-6. కనీసం 6 ప్రశ్నలు జోడించబడే వరకు ఈ ప్రక్రియను పునరావృతం చేయండి.
-
-ప్రశ్నను సవరించడానికి దశలు:
-1. సంబంధించిన కంటెంట్ కింద ప్రశ్నల జాబితాకు నావిగేట్ చేయండి.
-2. మీరు సవరించాలనుకునే ప్రశ్న పక్కన ఉన్న సవరించు బటన్‌పై క్లిక్ చేయండి.
-3. ప్రశ్న లేదా సమాధానానికి అవసరమైన మార్పులు చేయండి.
-4. ప్రశ్నను నవీకరించడానికి మార్పులను సేవ్ చేయి క్లిక్ చేయండి.
-
-5. ప్రశ్నలను సమీక్షించడం మరియు తుది రూపం ఇవ్వడం
-
-సమర్పణకు ముందు, ఫ్రేమ్ చేయబడిన అన్ని ప్రశ్నలు నాణ్యతా ప్రమాణాలకు అనుగుణంగా ఉన్నాయని నిర్ధారించుకోండి:
-✔ ప్రశ్నలు స్పష్టంగా మరియు సంక్షిప్తంగా ఉన్నాయా?
-✔ సమాధానాలు క్లిష్టత స్థాయికి సరిపోతాయా?
-✔ కనీసం 6 ప్రశ్నలు (ప్రతి స్థాయికి 2) ఉన్నాయా?
-✔ అవి కంటెంట్ యొక్క విభిన్న అంశాలను కవర్ చేస్తాయా?
-
-సమీక్షించిన తర్వాత, తుది రూపం ఇవ్వడానికి ప్రశ్నలను సమర్పించు క్లిక్ చేయండి.
-"""
 }
 
 # ------------------------------------------------------------------------------
@@ -226,58 +95,65 @@ def init_connection():
     return MongoClient(st.secrets["mongo"]["uri"])
 
 client = init_connection()
-db = client["Q_and_A"]
+db = client["Q_and_A"]  # Database Name
 
-content_collection = db["content_data"]
-users_collection = db["users"]
+# Collections
+content_collection = db["content_data"]  # content Q&A
+users_collection = db["users"]           # for storing user accounts
 
 # ------------------------------------------------------------------------------
 # 2) Authentication Helpers
 # ------------------------------------------------------------------------------
 def hash_password(password: str) -> bytes:
     """Generate salted hash for the given password."""
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
 def check_password(password: str, hashed: bytes) -> bool:
     """Compare a plain password with the hashed password."""
-    return bcrypt.checkpw(password.encode("utf-8"), hashed)
+    return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
 def register_user(username: str, password: str) -> bool:
     """
-    Attempt to register a new user.
+    Attempt to register a new user. 
     Returns True if registration is successful, False if username already exists.
     """
     existing_user = users_collection.find_one({"username": username})
     if existing_user:
-        return False
+        return False  # username already taken
+
     hashed_pw = hash_password(password)
     new_user = {
         "username": username,
         "hashed_password": hashed_pw,
-        "activity_logs": []
+        "activity_logs": []  # store user logs here
     }
     users_collection.insert_one(new_user)
     return True
 
 def login_user(username: str, password: str) -> bool:
     """
-    Attempt to log in user.
+    Attempt to log in user. 
     Returns True if credentials match, else False.
     """
     user_doc = users_collection.find_one({"username": username})
     if not user_doc:
         return False
+
     hashed_pw = user_doc["hashed_password"]
-    return check_password(password, hashed_pw)
+    if check_password(password, hashed_pw):
+        return True
+    return False
 
 # ------------------------------------------------------------------------------
-# 3) Log user actions (skip, add, edit, delete)
-#    to BOTH the content document and the user's record
+# 3) Log user actions (skip, add, edit, delete) 
+#    to BOTH the content item and the user's record
 # ------------------------------------------------------------------------------
 def log_user_action(content_id, action, username):
+    """Append a record with username, action, and timestamp 
+       to both the content document and the user's activity_logs."""
     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Log in content_data
+    # 3a) Log to the content_data 'users' array
     content_collection.update_one(
         {"content_id": content_id},
         {
@@ -291,7 +167,8 @@ def log_user_action(content_id, action, username):
         },
         upsert=True
     )
-    # Log in user's doc
+
+    # 3b) Also log in the user's own doc:
     users_collection.update_one(
         {"username": username},
         {
@@ -306,65 +183,41 @@ def log_user_action(content_id, action, username):
     )
 
 # ------------------------------------------------------------------------------
-# 4) Session State Defaults
+# 4) Language Toggle (Sidebar)
 # ------------------------------------------------------------------------------
 if "language" not in st.session_state:
-    st.session_state["language"] = "English"
+    st.session_state["language"] = "English"  # Default
+
+lang_choice = st.sidebar.selectbox(
+    "Language / భాష:",
+    ("English", "Telugu"),
+    index=0 if st.session_state["language"] == "English" else 1
+)
+st.session_state["language"] = lang_choice
+L = LANG_TEXT[ st.session_state["language"] ]  # Shortcut to the current lang dict
+
+# ------------------------------------------------------------------------------
+# 5) App Title
+# ------------------------------------------------------------------------------
+st.title(L["app_title"])
+
+# ------------------------------------------------------------------------------
+# 6) Check if user is authenticated in session
+# ------------------------------------------------------------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 if "username" not in st.session_state:
     st.session_state["username"] = None
-if "show_instructions" not in st.session_state:
-    st.session_state["show_instructions"] = False
-if "skipped_ids" not in st.session_state:
-    st.session_state["skipped_ids"] = []
-
-L = LANG_TEXT[st.session_state["language"]]
 
 # ------------------------------------------------------------------------------
-# 5) Top Row Layout: Title on the left, Language & Instructions button on the right
-# ------------------------------------------------------------------------------
-top_left, top_right = st.columns([6, 2])
-
-with top_left:
-    st.title(L["app_title"])
-
-with top_right:
-    # Language selection on the top-right
-    lang_choice = st.selectbox(
-        "Language / భాష:",
-        ["English", "Telugu"],
-        index=0 if st.session_state["language"] == "English" else 1
-    )
-    if lang_choice != st.session_state["language"]:
-        st.session_state["language"] = lang_choice
-        L = LANG_TEXT[st.session_state["language"]]
-
-    # Instructions button next to language
-    if st.button(L["instructions_btn"]):
-        st.session_state["show_instructions"] = not st.session_state["show_instructions"]
-
-# ------------------------------------------------------------------------------
-# 6) If instructions are toggled on, show them at the top (simulate a pop-up)
-# ------------------------------------------------------------------------------
-if st.session_state["show_instructions"]:
-    st.markdown("----")
-    st.markdown("## Instructions")
-    st.markdown(INSTRUCTIONS[st.session_state["language"]])
-    st.markdown("----")
-
-# ------------------------------------------------------------------------------
-# 7) If user is not logged in, show login/register
+# 7) If user is not logged in, show register/login
 # ------------------------------------------------------------------------------
 if not st.session_state["logged_in"]:
-    auth_choice = st.radio(
-        L["choose_action"],
-        [L["login_label"], L["register_label"]]
-    )
+    auth_choice = st.radio(L["choose_action"], [L["login_label"], L["register_label"]])
 
     if auth_choice == L["register_label"]:
-        reg_username = st.text_input(L["new_username"])
-        reg_password = st.text_input(L["new_password"], type="password")
+        reg_username = st.text_input(L["new_username"], key="reg_user")
+        reg_password = st.text_input(L["new_password"], type="password", key="reg_pass")
         if st.button(L["register_btn"]):
             if reg_username.strip() and reg_password.strip():
                 success = register_user(reg_username, reg_password)
@@ -375,32 +228,40 @@ if not st.session_state["logged_in"]:
             else:
                 st.error(L["fill_error"])
 
-    else:  # login
-        log_username = st.text_input(L["login_username"])
-        log_password = st.text_input(L["login_password"], type="password")
+    elif auth_choice == L["login_label"]:
+        log_username = st.text_input(L["login_username"], key="log_user")
+        log_password = st.text_input(L["login_password"], type="password", key="log_pass")
         if st.button(L["login_btn"]):
             if log_username.strip() and log_password.strip():
                 success = login_user(log_username, log_password)
                 if success:
                     st.session_state["logged_in"] = True
                     st.session_state["username"] = log_username
-                    # Auto-show instructions after a successful login
-                    st.session_state["show_instructions"] = True
                     st.stop()
                 else:
                     st.error(L["login_error"])
             else:
                 st.error(L["login_fill_error"])
 
-    st.stop()
+    st.stop()  # if not logged in, stop here to avoid showing the rest of the app
 else:
-    st.markdown(L["welcome_user"].format(username=st.session_state["username"]))
+    st.markdown(L["welcome_user"].format(username=st.session_state['username']))
 
 # ------------------------------------------------------------------------------
-# 8) SEARCH BOX
+# 8) Once logged in, the rest of the app is accessible
+# ------------------------------------------------------------------------------
+username = st.session_state["username"]
+
+# Create or get the "skipped_ids" in session
+if "skipped_ids" not in st.session_state:
+    st.session_state["skipped_ids"] = []
+
+# ------------------------------------------------------------------------------
+# 9) SEARCH BOX
 # ------------------------------------------------------------------------------
 search_id = st.text_input(L["search_id"])
 search_button = st.button(L["search_btn"])
+
 if search_button:
     found = content_collection.find_one({"content_id": search_id})
     if found:
@@ -410,15 +271,11 @@ if search_button:
         st.error(L["search_err"].format(search_id=search_id))
 
 # ------------------------------------------------------------------------------
-# 9) AUTO-FETCH LOGIC
+# 10) AUTO-FETCH LOGIC
 # ------------------------------------------------------------------------------
 def fetch_next_content():
-    """
-    Sets st.session_state["current_content_id"] to the next appropriate item:
-    - content with empty questions
-    - else content with questions < 6
-    - else from skip list
-    """
+    """Sets st.session_state["current_content_id"] to the next appropriate item
+       (empty questions, else < 6 questions, else from skip list)."""
     query_empty = {
         "questions": {"$size": 0},
         "content_id": {"$nin": st.session_state["skipped_ids"]},
@@ -431,13 +288,13 @@ def fetch_next_content():
             "content_id": {"$nin": st.session_state["skipped_ids"]},
         }
         doc = content_collection.find_one(query_lt6)
-
+    
     if not doc:
         # Then from skip list if available
         if st.session_state["skipped_ids"]:
             skipped_id = st.session_state["skipped_ids"].pop(0)
             doc = content_collection.find_one({"content_id": skipped_id})
-
+    
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
@@ -449,7 +306,7 @@ if "current_content_id" not in st.session_state:
     fetch_next_content()
 
 # ------------------------------------------------------------------------------
-# 10) SHOW & EDIT CURRENT CONTENT
+# 11) SHOW & EDIT THE CURRENT CONTENT
 # ------------------------------------------------------------------------------
 if "current_content_id" in st.session_state:
     content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
@@ -461,56 +318,60 @@ if "current_content_id" in st.session_state:
         questions_list = content_data.get("questions", [])
         st.write(L["total_questions"].format(count=len(questions_list)))
 
-        # 10a) EDIT/DELETE
+        # 11a) EDIT/DELETE EXISTING QUESTIONS
         if questions_list:
             st.write(L["existing_questions"])
             updated_questions = []
             for idx, q in enumerate(questions_list, start=1):
                 st.write(f"**{L['edit_question_label'].format(idx=idx)}**")
-
+                
                 question_text = st.text_area(
                     f"{L['edit_question_label'].format(idx=idx)}",
                     value=q["question"],
                     key=f"edit_q_{idx}"
                 )
-                # map difficulty to index
-                diff_options = ["easy", "medium", "hard"]
-                difficulty_index = diff_options.index(q["difficulty"])
+                difficulty_index = ["easy","medium","hard"].index(q["difficulty"])
                 difficulty_label = L["difficulty_level_label"].format(idx=idx)
-                difficulty_choice = st.selectbox(
+                difficulty = st.selectbox(
                     difficulty_label,
-                    diff_options,
+                    ["easy", "medium", "hard"],
                     index=difficulty_index,
                     key=f"edit_d_{idx}"
                 )
                 answer_text = q.get("answer", "")
 
-                # Delete?
+                # "Delete this question" checkbox
                 delete_flag = st.checkbox(L["delete_question_label"].format(idx=idx), key=f"delete_{idx}")
 
+                # Only append to updated list if user does not want to delete
                 if not delete_flag:
                     updated_questions.append({
                         "question": question_text,
-                        "difficulty": difficulty_choice,
+                        "difficulty": difficulty,
                         "answer": answer_text
                     })
                 else:
                     st.warning(L["delete_warning"].format(idx=idx))
 
             if st.button(L["save_changes_btn"]):
+                # Update DB with whatever remains in updated_questions
                 content_collection.update_one(
                     {"content_id": content_data["content_id"]},
                     {"$set": {"questions": updated_questions}}
                 )
+
+                # If any were deleted, log that
                 if len(updated_questions) < len(questions_list):
-                    log_user_action(content_data["content_id"], "deleted question(s)", st.session_state["username"])
+                    log_user_action(content_data["content_id"], "deleted question(s)", username)
+
+                # If any were edited (text changed, etc.), we also consider that an edit
                 if updated_questions != questions_list:
-                    log_user_action(content_data["content_id"], "edited questions", st.session_state["username"])
+                    log_user_action(content_data["content_id"], "edited questions", username)
 
                 st.success(L["changes_saved"])
                 st.stop()
 
-        # 10b) ADD NEW
+        # 11b) ADD NEW QUESTION
         st.subheader(L["add_new_question_subheader"])
         new_question = st.text_area(L["enter_new_q_label"], height=100)
         new_difficulty = st.selectbox(L["difficulty_select_label"], ["easy", "medium", "hard"])
@@ -530,21 +391,21 @@ if "current_content_id" in st.session_state:
                     },
                     upsert=True
                 )
-                log_user_action(content_data["content_id"], "added question", st.session_state["username"])
+                log_user_action(content_data["content_id"], "added question", username)
                 st.success(L["changes_saved"])
                 st.stop()
             else:
                 st.error(L["empty_q_error"])
 
 # ------------------------------------------------------------------------------
-# 11) FETCH NEXT (SKIP)
+# 12) FETCH NEXT CONTENT (SKIP) BUTTON
 # ------------------------------------------------------------------------------
 st.subheader(L["fetch_next_subheader"])
 if st.button(L["fetch_next_btn"]):
     current_id = st.session_state.get("current_content_id")
     if current_id:
         st.session_state["skipped_ids"].append(current_id)
-        log_user_action(current_id, "skipped", st.session_state["username"])
+        log_user_action(current_id, "skipped", username)
         st.session_state.pop("current_content_id", None)
         st.session_state.pop("questions", None)
     st.stop()
