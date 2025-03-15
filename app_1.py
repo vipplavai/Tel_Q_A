@@ -1,6 +1,8 @@
 import streamlit as st
 from pymongo import MongoClient
 from datetime import datetime
+from instructions import INSTRUCTIONS  # Import instructions from separate file
+from lang_text import LANG_TEXT  # Import language text mappings from separate file
 
 # ------------------------------------------------------------------------------
 # 1) MONGODB CONNECTION
@@ -53,52 +55,19 @@ def fetch_next_content():
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
+        st.session_state["new_question"] = ""  # Reset new question field
     else:
         st.warning("✅ No more content available to process!")
 
 # ------------------------------------------------------------------------------
-# 4) SEARCH FOR CONTENT BY `content_id`
-# ------------------------------------------------------------------------------
-def fetch_content_by_id(content_id):
-    found = content_collection.find_one({"content_id": content_id})
-    if found:
-        st.session_state["current_content_id"] = found["content_id"]
-        st.session_state["questions"] = found.get("questions", [])
-    else:
-        st.error(f"❌ No content found for content_id: {content_id}")
-
-# ------------------------------------------------------------------------------
-# 5) LOG USER ACTIONS
-# ------------------------------------------------------------------------------
-def log_user_action(content_id, action):
-    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    content_collection.update_one(
-        {"content_id": content_id},
-        {
-            "$push": {
-                "users": {
-                    "username": st.session_state["authenticated_user"],
-                    "action": action,
-                    "datetime": timestamp_str
-                }
-            }
-        },
-        upsert=True
-    )
-
-# ------------------------------------------------------------------------------
-# 6) CONTENT MANAGEMENT FUNCTION
+# 4) CONTENT MANAGEMENT FUNCTION
 # ------------------------------------------------------------------------------
 def content_management():
     st.subheader("📖 Q & A Content Manager")
-
-    search_id = st.text_input("🔍 Search Content by ID:")
-    if st.button("Search"):
-        fetch_content_by_id(search_id)
-
+    
     if "current_content_id" not in st.session_state:
         fetch_next_content()
-
+    
     if "current_content_id" in st.session_state:
         content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
         st.subheader(f"📜 Retrieved Content (ID: {content_data['content_id']})")
@@ -118,34 +87,32 @@ def content_management():
 
         if st.button("Save Changes"):
             content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": updated_questions}})
-            log_user_action(content_data["content_id"], "edited questions")
             st.success("✅ Changes saved successfully!")
             st.rerun()
 
         if delete_indices:
             new_questions = [q for i, q in enumerate(questions) if i not in delete_indices]
             content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": new_questions}})
-            log_user_action(content_data["content_id"], "deleted questions")
             st.success("✅ Deleted selected questions!")
             st.rerun()
 
         st.subheader("📝 Add a New Question")
-        new_question = st.text_area("Enter New Question:")
+        st.session_state["new_question"] = st.text_area("Enter New Question:", value=st.session_state.get("new_question", ""))
+        
         if st.button("Save Question"):
-            if new_question.strip():
+            if st.session_state["new_question"].strip():
                 content_collection.update_one(
                     {"content_id": content_data["content_id"]},
-                    {"$push": {"questions": {"question": new_question}}},
+                    {"$push": {"questions": {"question": st.session_state["new_question"]}}},
                     upsert=True
                 )
-                log_user_action(content_data["content_id"], "added question")
+                st.session_state["new_question"] = ""  # Reset input field
                 st.success("✅ New question added successfully!")
                 st.rerun()
             else:
                 st.error("⚠️ Please enter a question before saving!")
 
     if st.button("Skip & Fetch Next Content"):
-        log_user_action(st.session_state["current_content_id"], "skipped")
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
@@ -153,7 +120,7 @@ def content_management():
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 7) MAIN APP: LOGIN & AUTHENTICATION (USERNAME ONLY)
+# 5) MAIN APP: LOGIN & AUTHENTICATION (USERNAME ONLY)
 # ------------------------------------------------------------------------------
 st.title("🔒 User Authentication")
 
@@ -161,8 +128,8 @@ if not is_authenticated():
     username = st.text_input("Enter your Username to Login:")
     if st.button("Login"):
         if username.strip():
-            authenticate_or_register_user(username)  # Auto-login or register new user
-            fetch_next_content()  # Fetch next available content after login
+            authenticate_or_register_user(username)
+            fetch_next_content()
             st.rerun()
         else:
             st.error("⚠️ Please enter a username to continue.")
@@ -172,3 +139,6 @@ else:
         logout_user()
         st.rerun()
     content_management()
+
+st.sidebar.header("ℹ️ Instructions")
+st.sidebar.text_area("Instructions", INSTRUCTIONS["English"], height=300, disabled=True)

@@ -1,7 +1,5 @@
-# instructions.py
-
-# English instructions, stored in a multiline docstring:
-INSTRUCTIONS_EN = """\
+INSTRUCTIONS = {
+    "English": """\
 3. Framing Quality Questions in Three Segments
 
 Once the content is displayed, questions must be framed in three difficulty levels:
@@ -60,10 +58,8 @@ Before submission, ensure all framed questions meet quality standards:
 ✔ Do they cover different aspects of the content?
 
 Once reviewed, click Submit Questions to finalize.
-"""
-
-# Telugu instructions, stored in another docstring:
-INSTRUCTIONS_TE = """\
+""",
+    "Telugu": """\
 3. మూడు విభాగాలలో నాణ్యమైన ప్రశ్నలను రూపొందించడం
 
 కంటెంట్ ప్రదర్శించబడిన తర్వాత, ప్రశ్నలను మూడు క్లిష్ట స్థాయిలలో రూపొందించాలి:
@@ -124,9 +120,4 @@ INSTRUCTIONS_TE = """\
 
 సమీక్షించిన తర్వాత, తుది రూపం ఇవ్వడానికి ప్రశ్నలను సమర్పించు క్లిక్ చేయండి.
 """
-
-# We create a dictionary that maps the language to the docstring text
-INSTRUCTIONS = {
-    "English": INSTRUCTIONS_EN,
-    "Telugu": INSTRUCTIONS_TE
 }
