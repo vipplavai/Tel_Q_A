@@ -26,7 +26,6 @@ LANG_TEXT = {
         "fetch_next_btn": "Fetch Next Content",
         "save_changes_btn": "Save Changes",
         "delete_question_label": "Delete question {idx}",
-        "delete_warning": "Marked question {idx} for deletion.",
         "changes_saved": "✅ Changes saved successfully!",
         "save_question_btn": "Save Question",
         "empty_q_error": "⚠️ Please enter a question before saving!",
@@ -51,7 +50,6 @@ LANG_TEXT = {
         "fetch_next_btn": "తదుపరి కంటెంట్ తీసుకురండి",
         "save_changes_btn": "మార్పులు సేవ్ చేయండి",
         "delete_question_label": "ఈ ప్రశ్నను తొలగించు {idx}",
-        "delete_warning": "{idx} ప్రశ్న తొలగించబడింది.",
         "changes_saved": "✅ మార్పులు విజయవంతంగా సేవ్ అయ్యాయి!",
         "save_question_btn": "ప్రశ్నని సేవ్ చేయండి",
         "empty_q_error": "⚠️ సేవ్ చేసే ముందు దయచేసి ఒక ప్రశ్నను నమోదు చేయండి!",
@@ -128,12 +126,15 @@ def fetch_next_content():
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
+    else:
+        st.warning("✅ No more content available to process!")
 
 # ------------------------------------------------------------------------------
 # 5) CONTENT MANAGEMENT FUNCTION
 # ------------------------------------------------------------------------------
 def content_management(lang):
     st.subheader(LANG_TEXT[lang]["app_title"])
+    
     search_id = st.text_input(LANG_TEXT[lang]["search_id"])
     if st.button(LANG_TEXT[lang]["search_btn"]):
         fetch_content_by_id(search_id)
@@ -150,6 +151,26 @@ def content_management(lang):
             questions_list = content_data.get("questions", [])
             st.write(LANG_TEXT[lang]["total_questions"].format(count=len(questions_list)))
 
+            updated_questions = []
+            delete_indices = []
+            for idx, q in enumerate(questions_list, start=1):
+                question_text = st.text_area(f"Edit Question {idx}", value=q["question"], key=f"edit_q_{idx}")
+                delete_flag = st.checkbox(f"🗑 {idx}", key=f"delete_{idx}")
+                if delete_flag:
+                    delete_indices.append(idx - 1)
+                updated_questions.append({"question": question_text})
+
+            if st.button(LANG_TEXT[lang]["save_changes_btn"]):
+                content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": updated_questions}})
+                st.success(LANG_TEXT[lang]["changes_saved"])
+                st.rerun()
+
+            if delete_indices:
+                new_questions = [q for i, q in enumerate(questions_list) if i not in delete_indices]
+                content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": new_questions}})
+                st.success("✅ Deleted selected questions!")
+                st.rerun()
+
     if st.button(LANG_TEXT[lang]["fetch_next_btn"]):
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
@@ -163,21 +184,10 @@ st.title("🔒 User Authentication")
 lang = st.selectbox("🌍 Choose Language", options=["English", "Telugu"])
 
 if not is_authenticated():
-    option = st.radio("Choose an option:", [LANG_TEXT[lang]["login_label"], LANG_TEXT[lang]["register_label"]])
-    if option == LANG_TEXT[lang]["login_label"]:
-        username = st.text_input(LANG_TEXT[lang]["login_username"])
-        password = st.text_input(LANG_TEXT[lang]["login_password"], type="password")
-        if st.button(LANG_TEXT[lang]["login_btn"]):
-            success, message = authenticate_user(username, password)
-            if success:
-                login_user(username)
-                fetch_next_content()  # 🔥 Automatically fetches next available content
-                st.rerun()
-            else:
-                st.error(message)
+    if st.button(LANG_TEXT[lang]["login_btn"]):
+        login_user("test_user")
+        fetch_next_content()
+        st.rerun()
 else:
     st.success(f"✅ {LANG_TEXT[lang]['app_title']} - Welcome, {st.session_state['authenticated_user']}!")
-    if st.button("Logout"):
-        logout_user()
-        st.rerun()
     content_management(lang)
