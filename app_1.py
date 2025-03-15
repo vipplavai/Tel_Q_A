@@ -39,8 +39,9 @@ def fetch_next_content():
     if "skipped_ids" not in st.session_state:
         st.session_state["skipped_ids"] = []
 
-    # Reset new_question input field
-    st.session_state["new_question"] = ""
+    # Ensure `new_question` is initialized properly
+    if "new_question" not in st.session_state:
+        st.session_state["new_question"] = ""
 
     # Priority 1: Fetch content with empty questions
     doc = content_collection.find_one({"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
@@ -66,7 +67,7 @@ def fetch_content_by_id(content_id):
         st.session_state["current_content_id"] = found["content_id"]
         st.session_state["questions"] = found.get("questions", [])
 
-        # Reset new_question input field after fetching new content
+        # Ensure `new_question` is initialized when searching new content
         st.session_state["new_question"] = ""
     else:
         st.error(f"❌ No content found for content_id: {content_id}")
@@ -95,6 +96,10 @@ def log_user_action(content_id, action):
 # ------------------------------------------------------------------------------
 def content_management():
     st.subheader("📖 Q & A Content Manager")
+
+    # Ensure `new_question` is initialized properly
+    if "new_question" not in st.session_state:
+        st.session_state["new_question"] = ""
 
     search_id = st.text_input("🔍 Search Content by ID:")
     if st.button("Search"):
@@ -134,7 +139,7 @@ def content_management():
             st.rerun()
 
         st.subheader("📝 Add a New Question")
-        new_question = st.text_area("Enter New Question:", value=st.session_state.get("new_question", ""), key="new_question")
+        new_question = st.text_area("Enter New Question:", value=st.session_state["new_question"], key="new_question")
         if st.button("Save Question"):
             if new_question.strip():
                 content_collection.update_one(
@@ -154,8 +159,8 @@ def content_management():
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
-        
-        # Reset new_question input field when skipping content
+
+        # Ensure `new_question` is cleared on skip
         st.session_state["new_question"] = ""
 
         fetch_next_content()
