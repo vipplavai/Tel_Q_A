@@ -12,7 +12,7 @@ def init_connection():
 
 client = init_connection()
 db = client["Q_and_A"]
-users_collection = db["users"]  # Collection for user accounts
+users_collection = db["users"]  
 content_collection = db["content_data"]
 
 # ------------------------------------------------------------------------------
@@ -24,27 +24,19 @@ def hash_password(password):
 
 def verify_password(password, hashed_password):
     """Verify password against stored bcrypt hash."""
-    # Ensure hashed_password is a string
     if isinstance(hashed_password, bytes):
         hashed_password = hashed_password.decode("utf-8")
-
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
-
 
 def register_user(username, password):
     """Registers a new user by hashing the password and storing it in MongoDB."""
     existing_user = users_collection.find_one({"username": username})
-    
     if existing_user:
         return False, "❌ Username already exists."
 
     hashed_password = hash_password(password)
-    
-    # Store password under "hashed_password"
     users_collection.insert_one({"username": username, "hashed_password": hashed_password})
-    
     return True, "✅ Registration successful! Please log in."
-
 
 def authenticate_user(username, password):
     """Authenticates a user by verifying bcrypt-hashed passwords."""
@@ -53,23 +45,14 @@ def authenticate_user(username, password):
     if not user:
         return False, "❌ Username does not exist."
 
-    # Check if hashed_password exists
     if "hashed_password" not in user:
         return False, "❌ Password field missing in database. Please contact admin."
 
     hashed_password = user["hashed_password"]
-
-    # If the stored password is in Binary format, decode it
-    if isinstance(hashed_password, bytes):
-        hashed_password = hashed_password.decode("utf-8")
-
-    # Verify password using bcrypt
     if not verify_password(password, hashed_password):
         return False, "❌ Incorrect password."
 
     return True, "✅ Login successful!"
-
-
 
 def is_authenticated():
     """Check if a user is logged in by verifying session state."""
@@ -195,7 +178,6 @@ def content_management():
                 else:
                     st.error("⚠ Please enter a question before saving!")
 
-    # Skip content
     if st.button("Fetch Next Content"):
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
         log_user_action(st.session_state["current_content_id"], "skipped")
@@ -209,6 +191,7 @@ def content_management():
 st.title("🔒 User Authentication")
 
 if not is_authenticated():
+    st.subheader("🔑 Login or Register")
     option = st.radio("Choose an option:", ["Login", "Register"])
     
     if option == "Login":
@@ -218,10 +201,9 @@ if not is_authenticated():
             success, message = authenticate_user(username, password)
             if success:
                 login_user(username)
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error(message)
-    
     else:
         new_username = st.text_input("New Username")
         new_password = st.text_input("New Password", type="password")
@@ -231,9 +213,7 @@ if not is_authenticated():
 
 else:
     st.success(f"✅ Welcome, {st.session_state['authenticated_user']}!")
-    
     if st.button("Logout"):
         logout_user()
-        st.experimental_rerun()
-
+        st.rerun()
     content_management()
