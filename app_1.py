@@ -3,8 +3,12 @@ from pymongo import MongoClient
 from datetime import datetime
 import bcrypt  # Requires "pip install bcrypt"
 
+# 1) Import the instructions from the separate file
+from instructions import INSTRUCTIONS
+
 # ------------------------------------------------------------------------------
-# 0) Translation Data & Instructions
+# 0) Translation Data
+# (We leave your LANG_TEXT as is, minus the old instructions dict)
 # ------------------------------------------------------------------------------
 LANG_TEXT = {
     "English": {
@@ -89,16 +93,6 @@ LANG_TEXT = {
     }
 }
 
-INSTRUCTIONS = {
-    "English": """\
-[Your English instructions here...]
-""",
-    "Telugu": """\
-[Your Telugu instructions here...]
-"""
-}
-
-
 # ------------------------------------------------------------------------------
 # 1) Initialize connection to MongoDB
 # ------------------------------------------------------------------------------
@@ -114,6 +108,9 @@ users_collection = db["users"]
 # ------------------------------------------------------------------------------
 # 2) Authentication Helpers
 # ------------------------------------------------------------------------------
+import bcrypt
+from datetime import datetime
+
 def hash_password(password: str) -> bytes:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
@@ -142,6 +139,7 @@ def login_user(username: str, password: str) -> bool:
 
 def log_user_action(content_id, action, username):
     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Log in content_data
     content_collection.update_one(
         {"content_id": content_id},
         {
@@ -155,6 +153,7 @@ def log_user_action(content_id, action, username):
         },
         upsert=True
     )
+    # Log in users
     users_collection.update_one(
         {"username": username},
         {
@@ -169,7 +168,7 @@ def log_user_action(content_id, action, username):
     )
 
 # ------------------------------------------------------------------------------
-# 4) Session State Defaults
+# 4) Session State
 # ------------------------------------------------------------------------------
 if "language" not in st.session_state:
     st.session_state["language"] = "English"
@@ -185,7 +184,7 @@ if "skipped_ids" not in st.session_state:
 L = LANG_TEXT[st.session_state["language"]]
 
 # ------------------------------------------------------------------------------
-# 5) Top Row: Title (left), Language + Instructions (right)
+# 5) Layout: Title & Language
 # ------------------------------------------------------------------------------
 top_left, top_right = st.columns([6, 2])
 with top_left:
@@ -199,28 +198,28 @@ with top_right:
     )
     if lang_choice != st.session_state["language"]:
         st.session_state["language"] = lang_choice
-        L = LANG_TEXT[st.session_state["language"]]
+        L = LANG_TEXT[lang_choice]
 
     if st.button(L["instructions_btn"]):
         st.session_state["show_instructions"] = not st.session_state["show_instructions"]
 
 # ------------------------------------------------------------------------------
-# 6) Show instructions if toggled
+# 6) Show external instructions if toggled
 # ------------------------------------------------------------------------------
 if st.session_state["show_instructions"]:
-    st.markdown("----")
+    st.markdown("---")
     st.markdown("## Instructions")
+    # 2) We reference our imported docstrings here
+    from instructions import INSTRUCTIONS  # you can do this at the top as well
     st.markdown(INSTRUCTIONS[st.session_state["language"]])
-    st.markdown("----")
+    st.markdown("---")
 
 # ------------------------------------------------------------------------------
 # 7) If not logged in, show login/register
 # ------------------------------------------------------------------------------
 if not st.session_state["logged_in"]:
     auth_choice = st.radio(
-        L["choose_action"],
-        [L["login_label"], L["register_label"]],
-        key="auth_radio"
+        L["choose_action"], [L["login_label"], L["register_label"]], key="auth_radio"
     )
     
     if auth_choice == L["register_label"]:
@@ -231,8 +230,6 @@ if not st.session_state["logged_in"]:
                 success = register_user(reg_username, reg_password)
                 if success:
                     st.success(L["register_success"])
-                    # Optionally rerun so user sees immediate changes, or just let them switch to "Login"
-                    # st.experimental_rerun()
                 else:
                     st.error(L["register_error"])
             else:
@@ -247,14 +244,13 @@ if not st.session_state["logged_in"]:
                     st.session_state["logged_in"] = True
                     st.session_state["username"] = log_username
                     st.session_state["show_instructions"] = True
-                    # After successful login, rerun so the script starts fresh with the user logged in
                     st.experimental_rerun()
                 else:
                     st.error(L["login_error"])
             else:
                 st.error(L["login_fill_error"])
 
-    st.stop()  # If not logged in, do not continue rendering the rest
+    st.stop()
 else:
     st.markdown(L["welcome_user"].format(username=st.session_state["username"]))
 
@@ -337,7 +333,6 @@ if "current_content_id" in st.session_state:
                 )
                 answer_text = q.get("answer", "")
 
-                # "Delete question" checkbox
                 delete_flag = st.checkbox(L["delete_question_label"].format(idx=idx), key=f"delete_{idx}")
                 if not delete_flag:
                     updated_questions.append({
@@ -359,7 +354,6 @@ if "current_content_id" in st.session_state:
                     log_user_action(content_data["content_id"], "edited questions", st.session_state["username"])
 
                 st.success(L["changes_saved"])
-                # Immediately rerun to see updated data
                 st.experimental_rerun()
 
         # 10b) ADD NEW
@@ -384,7 +378,6 @@ if "current_content_id" in st.session_state:
                 )
                 log_user_action(content_data["content_id"], "added question", st.session_state["username"])
                 st.success(L["changes_saved"])
-                # Re-run so the new question appears immediately in the list
                 st.experimental_rerun()
             else:
                 st.error(L["empty_q_error"])
@@ -400,5 +393,4 @@ if st.button(L["fetch_next_btn"], key="fetch_next_btn"):
         log_user_action(current_id, "skipped", st.session_state["username"])
         st.session_state.pop("current_content_id", None)
         st.session_state.pop("questions", None)
-    # Immediately fetch next or re-run from the top
     st.experimental_rerun()
