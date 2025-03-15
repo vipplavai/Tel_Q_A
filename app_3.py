@@ -104,23 +104,15 @@ def fetch_next_content():
         st.session_state["skipped_ids"] = []
 
     # Priority 1: Fetch content with empty questions
-    doc = content_collection.find_one({
-        "questions": {"$size": 0},
-        "content_id": {"$nin": st.session_state["skipped_ids"]}
-    })
+    doc = content_collection.find_one({"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
 
     # Priority 2: Fetch content with <6 questions
     if not doc:
-        doc = content_collection.find_one({
-            "$expr": {"$lt": [{"$size": "$questions"}, 6]},
-            "content_id": {"$nin": st.session_state["skipped_ids"]}
-        })
+        doc = content_collection.find_one({"$expr": {"$lt": [{"$size": "$questions"}, 6]}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
 
     # Priority 3: Fetch skipped content
     if not doc and st.session_state["skipped_ids"]:
-        doc = content_collection.find_one({
-            "content_id": st.session_state["skipped_ids"].pop(0)
-        })
+        doc = content_collection.find_one({"content_id": st.session_state["skipped_ids"].pop(0)})
 
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
@@ -175,12 +167,7 @@ def content_management():
     if "current_content_id" in st.session_state:
         content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
         st.subheader(f"{LANG_DICT[lang]['retrieved_content_id']} {content_data['content_id']})")
-        st.text_area(
-            LANG_DICT[lang]["content_label"],
-            value=content_data.get("content", ""),
-            height=300,
-            disabled=True
-        )
+        st.text_area(LANG_DICT[lang]["content_label"], value=content_data.get("content", ""), height=300, disabled=True)
 
         questions = content_data.get("questions", [])
         st.write(f"{LANG_DICT[lang]['total_questions']} {len(questions)}")
@@ -188,11 +175,7 @@ def content_management():
         updated_questions = []
         delete_indices = []
         for idx, q in enumerate(questions, start=1):
-            question_text = st.text_area(
-                f"{LANG_DICT[lang]['edit_question']} {idx}",
-                value=q["question"],
-                key=f"edit_q_{idx}"
-            )
+            question_text = st.text_area(f"{LANG_DICT[lang]['edit_question']} {idx}", value=q["question"], key=f"edit_q_{idx}")
             delete_flag = st.checkbox(f"{LANG_DICT[lang]['delete_question']} {idx}", key=f"delete_{idx}")
             if delete_flag:
                 delete_indices.append(idx - 1)
@@ -209,10 +192,7 @@ def content_management():
 
         if delete_indices:
             new_questions = [q for i, q in enumerate(questions) if i not in delete_indices]
-            content_collection.update_one(
-                {"content_id": content_data["content_id"]},
-                {"$set": {"questions": new_questions}}
-            )
+            content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": new_questions}})
             log_user_action(content_data["content_id"], "deleted questions")
             st.success(LANG_DICT[lang]["deleted_questions"])
             st.rerun()
@@ -244,22 +224,16 @@ def content_management():
 # 7) MAIN APP: LOGIN & AUTHENTICATION (USERNAME ONLY)
 # ------------------------------------------------------------------------------
 def main():
-    # Ensure there's a default language in session
+    # Language selection (store in session_state)
     if "lang" not in st.session_state:
-        st.session_state["lang"] = "en"  # default to English
-
-    # Determine the correct index for the selectbox
-    # (0 = English, 1 = Telugu) based on current st.session_state["lang"]
-    default_idx = 0 if st.session_state["lang"] == "en" else 1
+        st.session_state["lang"] = "en"  # default language
 
     # Language selector at the top (or in a sidebar)
     language_choice = st.selectbox(
         LANG_DICT[st.session_state["lang"]]["select_language"],
-        ["English", "Telugu"],
-        index=default_idx
+        ["English", "Telugu"]
     )
-
-    # Set the session state's lang according to selection
+    # Map choice to language code
     st.session_state["lang"] = "en" if language_choice == "English" else "te"
     lang = st.session_state["lang"]
 
@@ -270,7 +244,7 @@ def main():
         if st.button(LANG_DICT[lang]["login_button"]):
             if username.strip():
                 authenticate_or_register_user(username)
-                fetch_next_content()
+                fetch_next_content()  # load initial content after login
                 st.rerun()
             else:
                 st.error(LANG_DICT[lang]["no_username_warning"])
