@@ -4,6 +4,90 @@ from datetime import datetime
 import bcrypt  # Requires "pip install bcrypt"
 
 # ------------------------------------------------------------------------------
+# 0) Translation Data
+# ------------------------------------------------------------------------------
+LANG_TEXT = {
+    "English": {
+        "app_title": "📖 Question Inserter Tool @vipplavAI",
+        "choose_action": "Choose an action:",
+        "login_label": "Login",
+        "register_label": "Register",
+        "new_username": "New Username:",
+        "new_password": "New Password:",
+        "register_btn": "Register",
+        "register_success": "User registered successfully! Please login now.",
+        "register_error": "Username already exists. Please choose a different name.",
+        "login_username": "Username:",
+        "login_password": "Password:",
+        "login_btn": "Login",
+        "login_error": "Invalid username or password.",
+        "login_fill_error": "Please enter both username and password.",
+        "fill_error": "Please enter both username and password.",
+        "welcome_user": "Welcome, {username}!",
+        "search_id": "Search content_id:",
+        "search_btn": "Search",
+        "search_err": "No content found for content_id: {search_id}",
+        "no_more_items": "No more items. Nothing with empty or < 6 questions, and no skipped items remain.",
+        "content_id_retrieved": "📜 Retrieved Content (ID: {content_id})",
+        "content_box_label": "Content:",
+        "total_questions": "📌 **Total Questions:** {count}",
+        "existing_questions": "📋 **Existing Questions (Editable):**",
+        "edit_question_label": "Edit Question {idx}",
+        "difficulty_level_label": "Difficulty Level {idx}",
+        "delete_question_label": "Delete question {idx}",
+        "delete_warning": "Marked question {idx} for deletion.",
+        "save_changes_btn": "Save Changes",
+        "changes_saved": "✅ Changes saved successfully!",
+        "add_new_question_subheader": "📝 Add a New Question",
+        "enter_new_q_label": "Enter New Question:",
+        "difficulty_select_label": "Select Difficulty Level:",
+        "save_question_btn": "Save Question",
+        "empty_q_error": "⚠️ Please enter a question before saving!",
+        "fetch_next_subheader": "🔄 Fetch Next Content (Skip this one)",
+        "fetch_next_btn": "Fetch Next Content"
+    },
+    "Telugu": {
+        "app_title": "📖 ప్రశ్న ఇన్సర్టర్ సాధనం @vipplavAI",
+        "choose_action": "ఒక చర్యను ఎంచుకోండి:",
+        "login_label": "లాగిన్",
+        "register_label": "రిజిస్టర్",
+        "new_username": "క్రొత్త యూజర్ పేరు:",
+        "new_password": "క్రొత్త పాస్వర్డ్:",
+        "register_btn": "రిజిస్టర్",
+        "register_success": "వాడుకరి విజయవంతంగా రిజిస్టర్ అయ్యారు! దయచేసి లాగిన్ అవండి.",
+        "register_error": "యూజర్ పేరు ఇప్పటికే ఉంది. దయచేసి వేరే పేరు ఎంచుకోండి.",
+        "login_username": "యూజర్ పేరు:",
+        "login_password": "పాస్వర్డ్:",
+        "login_btn": "లాగిన్",
+        "login_error": "చెల్లని యూజర్ పేరు లేదా పాస్వర్డ్.",
+        "login_fill_error": "దయచేసి వినియోగదారు పేరు మరియు పాస్‌వర్డ్ రెండింటినీ నమోదు చేయండి.",
+        "fill_error": "దయచేసి వినియోగదారు పేరు మరియు పాస్‌వర్డ్ రెండింటినీ నమోదు చేయండి.",
+        "welcome_user": "సుస్వాగతం, {username}!",
+        "search_id": "కంటెంట్ ఐడి వెతకండి:",
+        "search_btn": "వెతకండి",
+        "search_err": "ఈ కంటెంట్ ఐడికి `{search_id}` అనువైన విషయం లేదు.",
+        "no_more_items": "మరిన్ని అంశాలు లేవు. ఖాళీ ప్రశ్నలు లేవు లేదా < 6 ప్రశ్నలు లేవు, అలాగే స్కిప్ చేసినవి లేవు.",
+        "content_id_retrieved": "📜 తిరిగి పొందిన కంటెంట్ (ID: {content_id})",
+        "content_box_label": "కంటెంట్:",
+        "total_questions": "📌 **మొత్తం ప్రశ్నలు:** {count}",
+        "existing_questions": "📋 **ఈ ప్రశ్నలను మార్పు చేయండి:**",
+        "edit_question_label": "ప్రశ్న {idx}ని మార్చండి",
+        "difficulty_level_label": "సమస్య స్థాయి {idx}",
+        "delete_question_label": "ఈ ప్రశ్నను తొలగించు {idx}",
+        "delete_warning": "{idx} ప్రశ్న తొలగించబడింది.",
+        "save_changes_btn": "మార్పులు సేవ్ చేయండి",
+        "changes_saved": "✅ మార్పులు విజయవంతంగా సేవ్ అయ్యాయి!",
+        "add_new_question_subheader": "📝 కొత్త ప్రశ్న చేర్చండి",
+        "enter_new_q_label": "కొత్త ప్రశ్నను నమోదు చేయండి:",
+        "difficulty_select_label": "సమస్య స్థాయిని ఎంచుకోండి:",
+        "save_question_btn": "ప్రశ్నని సేవ్ చేయండి",
+        "empty_q_error": "⚠️ సేవ్ చేసే ముందు దయచేసి ఒక ప్రశ్నను నమోదు చేయండి!,
+        "fetch_next_subheader": "🔄 మరో కంటెంట్ తీసుకురండి (ఇది స్కిప్ చేయండి)",
+        "fetch_next_btn": "తదుపరి కంటెంట్ తీసుకురండి"
+    }
+}
+
+# ------------------------------------------------------------------------------
 # 1) Initialize connection to MongoDB
 # ------------------------------------------------------------------------------
 @st.cache_resource
@@ -99,13 +183,26 @@ def log_user_action(content_id, action, username):
     )
 
 # ------------------------------------------------------------------------------
-# 4) App Title
+# 4) Language Toggle (Sidebar)
 # ------------------------------------------------------------------------------
-# st.write("Running Streamlit version:", st.__version__)
-st.title("📖 Question inserter tool @vipplavAI")
+if "language" not in st.session_state:
+    st.session_state["language"] = "English"  # Default
+
+lang_choice = st.sidebar.selectbox(
+    "Language / భాష:",
+    ("English", "Telugu"),
+    index=0 if st.session_state["language"] == "English" else 1
+)
+st.session_state["language"] = lang_choice
+L = LANG_TEXT[ st.session_state["language"] ]  # Shortcut to the current lang dict
 
 # ------------------------------------------------------------------------------
-# 5) Check if user is authenticated in session
+# 5) App Title
+# ------------------------------------------------------------------------------
+st.title(L["app_title"])
+
+# ------------------------------------------------------------------------------
+# 6) Check if user is authenticated in session
 # ------------------------------------------------------------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
@@ -113,47 +210,45 @@ if "username" not in st.session_state:
     st.session_state["username"] = None
 
 # ------------------------------------------------------------------------------
-# 6) If user is not logged in, show register/login
+# 7) If user is not logged in, show register/login
 # ------------------------------------------------------------------------------
 if not st.session_state["logged_in"]:
-    auth_choice = st.radio("Choose an action:", ["Login", "Register"])
+    auth_choice = st.radio(L["choose_action"], [L["login_label"], L["register_label"]])
 
-    if auth_choice == "Register":
-        reg_username = st.text_input("New Username:", key="reg_user")
-        reg_password = st.text_input("New Password:", type="password", key="reg_pass")
-        if st.button("Register"):
+    if auth_choice == L["register_label"]:
+        reg_username = st.text_input(L["new_username"], key="reg_user")
+        reg_password = st.text_input(L["new_password"], type="password", key="reg_pass")
+        if st.button(L["register_btn"]):
             if reg_username.strip() and reg_password.strip():
                 success = register_user(reg_username, reg_password)
                 if success:
-                    st.success("User registered successfully! Please login now.")
+                    st.success(L["register_success"])
                 else:
-                    st.error("Username already exists. Please choose a different name.")
+                    st.error(L["register_error"])
             else:
-                st.error("Please enter both username and password.")
+                st.error(L["fill_error"])
 
-    elif auth_choice == "Login":
-        log_username = st.text_input("Username:", key="log_user")
-        log_password = st.text_input("Password:", type="password", key="log_pass")
-        if st.button("Login"):
+    elif auth_choice == L["login_label"]:
+        log_username = st.text_input(L["login_username"], key="log_user")
+        log_password = st.text_input(L["login_password"], type="password", key="log_pass")
+        if st.button(L["login_btn"]):
             if log_username.strip() and log_password.strip():
                 success = login_user(log_username, log_password)
                 if success:
                     st.session_state["logged_in"] = True
                     st.session_state["username"] = log_username
-                    # Without st.experimental_rerun(), the page won't auto-refresh. 
-                    # You can do st.stop() after setting session states if you wish:
                     st.stop()
                 else:
-                    st.error("Invalid username or password.")
+                    st.error(L["login_error"])
             else:
-                st.error("Please enter both username and password.")
+                st.error(L["login_fill_error"])
 
     st.stop()  # if not logged in, stop here to avoid showing the rest of the app
 else:
-    st.markdown(f"**Welcome, {st.session_state['username']}!**")
+    st.markdown(L["welcome_user"].format(username=st.session_state['username']))
 
 # ------------------------------------------------------------------------------
-# 7) Once logged in, the rest of the app is accessible
+# 8) Once logged in, the rest of the app is accessible
 # ------------------------------------------------------------------------------
 username = st.session_state["username"]
 
@@ -162,10 +257,10 @@ if "skipped_ids" not in st.session_state:
     st.session_state["skipped_ids"] = []
 
 # ------------------------------------------------------------------------------
-# 8) SEARCH BOX
+# 9) SEARCH BOX
 # ------------------------------------------------------------------------------
-search_id = st.text_input("Search content_id:")
-search_button = st.button("Search")
+search_id = st.text_input(L["search_id"])
+search_button = st.button(L["search_btn"])
 
 if search_button:
     found = content_collection.find_one({"content_id": search_id})
@@ -173,10 +268,10 @@ if search_button:
         st.session_state["current_content_id"] = found["content_id"]
         st.session_state["questions"] = found.get("questions", [])
     else:
-        st.error(f"No content found for content_id: {search_id}")
+        st.error(L["search_err"].format(search_id=search_id))
 
 # ------------------------------------------------------------------------------
-# 9) AUTO-FETCH LOGIC
+# 10) AUTO-FETCH LOGIC
 # ------------------------------------------------------------------------------
 def fetch_next_content():
     """Sets st.session_state["current_content_id"] to the next appropriate item
@@ -204,47 +299,49 @@ def fetch_next_content():
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
     else:
-        st.warning("No more items. Nothing with empty or < 6 questions, and no skipped items remain.")
+        st.warning(L["no_more_items"])
         st.stop()
 
 if "current_content_id" not in st.session_state:
     fetch_next_content()
 
 # ------------------------------------------------------------------------------
-# 10) SHOW & EDIT THE CURRENT CONTENT
+# 11) SHOW & EDIT THE CURRENT CONTENT
 # ------------------------------------------------------------------------------
 if "current_content_id" in st.session_state:
     content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
     if content_data:
-        st.subheader(f"📜 Retrieved Content (ID: {content_data['content_id']})")
+        st.subheader(L["content_id_retrieved"].format(content_id=content_data['content_id']))
 
-        st.text_area("Content:", value=content_data.get("content", ""), height=300, disabled=True)
+        st.text_area(L["content_box_label"], value=content_data.get("content", ""), height=300, disabled=True)
 
         questions_list = content_data.get("questions", [])
-        st.write(f"📌 **Total Questions:** {len(questions_list)}")
+        st.write(L["total_questions"].format(count=len(questions_list)))
 
-        # 10a) EDIT/DELETE EXISTING QUESTIONS
+        # 11a) EDIT/DELETE EXISTING QUESTIONS
         if questions_list:
-            st.write("📋 **Existing Questions (Editable):**")
+            st.write(L["existing_questions"])
             updated_questions = []
             for idx, q in enumerate(questions_list, start=1):
-                st.write(f"**Question {idx}:**")
+                st.write(f"**{L['edit_question_label'].format(idx=idx)}**")
                 
                 question_text = st.text_area(
-                    f"Edit Question {idx}",
+                    f"{L['edit_question_label'].format(idx=idx)}",
                     value=q["question"],
                     key=f"edit_q_{idx}"
                 )
+                difficulty_index = ["easy","medium","hard"].index(q["difficulty"])
+                difficulty_label = L["difficulty_level_label"].format(idx=idx)
                 difficulty = st.selectbox(
-                    f"Difficulty Level {idx}",
+                    difficulty_label,
                     ["easy", "medium", "hard"],
-                    index=["easy", "medium", "hard"].index(q["difficulty"]),
+                    index=difficulty_index,
                     key=f"edit_d_{idx}"
                 )
                 answer_text = q.get("answer", "")
 
                 # "Delete this question" checkbox
-                delete_flag = st.checkbox(f"Delete question {idx}", key=f"delete_{idx}")
+                delete_flag = st.checkbox(L["delete_question_label"].format(idx=idx), key=f"delete_{idx}")
 
                 # Only append to updated list if user does not want to delete
                 if not delete_flag:
@@ -254,9 +351,9 @@ if "current_content_id" in st.session_state:
                         "answer": answer_text
                     })
                 else:
-                    st.warning(f"Marked question {idx} for deletion.")
+                    st.warning(L["delete_warning"].format(idx=idx))
 
-            if st.button("Save Changes"):
+            if st.button(L["save_changes_btn"]):
                 # Update DB with whatever remains in updated_questions
                 content_collection.update_one(
                     {"content_id": content_data["content_id"]},
@@ -271,17 +368,15 @@ if "current_content_id" in st.session_state:
                 if updated_questions != questions_list:
                     log_user_action(content_data["content_id"], "edited questions", username)
 
-                st.success("✅ Changes saved successfully!")
-                # Without st.experimental_rerun(), the UI won't auto-refresh.
-                # If you'd like to end and let user refresh:
+                st.success(L["changes_saved"])
                 st.stop()
 
-        # 10b) ADD NEW QUESTION
-        st.subheader("📝 Add a New Question")
-        new_question = st.text_area("Enter New Question:", height=100)
-        new_difficulty = st.selectbox("Select Difficulty Level:", ["easy", "medium", "hard"])
+        # 11b) ADD NEW QUESTION
+        st.subheader(L["add_new_question_subheader"])
+        new_question = st.text_area(L["enter_new_q_label"], height=100)
+        new_difficulty = st.selectbox(L["difficulty_select_label"], ["easy", "medium", "hard"])
 
-        if st.button("Save Question"):
+        if st.button(L["save_question_btn"]):
             if new_question.strip():
                 content_collection.update_one(
                     {"content_id": content_data["content_id"]},
@@ -297,20 +392,20 @@ if "current_content_id" in st.session_state:
                     upsert=True
                 )
                 log_user_action(content_data["content_id"], "added question", username)
-                st.success("✅ New question added successfully!")
-                st.stop()  # end script; user can refresh for updated view
+                st.success(L["changes_saved"])
+                st.stop()
             else:
-                st.error("⚠️ Please enter a question before saving!")
+                st.error(L["empty_q_error"])
 
 # ------------------------------------------------------------------------------
-# 11) FETCH NEXT CONTENT (SKIP) BUTTON
+# 12) FETCH NEXT CONTENT (SKIP) BUTTON
 # ------------------------------------------------------------------------------
-st.subheader("🔄 Fetch Next Content (Skip this one)")
-if st.button("Fetch Next Content"):
+st.subheader(L["fetch_next_subheader"])
+if st.button(L["fetch_next_btn"]):
     current_id = st.session_state.get("current_content_id")
     if current_id:
         st.session_state["skipped_ids"].append(current_id)
         log_user_action(current_id, "skipped", username)
         st.session_state.pop("current_content_id", None)
         st.session_state.pop("questions", None)
-    st.stop()  # user can refresh to load next
+    st.stop()
