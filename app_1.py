@@ -143,6 +143,23 @@ def content_management(lang):
             questions_list = content_data.get("questions", [])
             st.write(LANG_TEXT[lang]["total_questions"].format(count=len(questions_list)))
 
+            # Add New Question Section
+            st.subheader(LANG_TEXT[lang]["add_new_question_subheader"])
+            new_question = st.text_area("Enter New Question:")
+            new_difficulty = st.selectbox("Select Difficulty Level:", ["easy", "medium", "hard"])
+
+            if st.button("Save Question"):
+                if new_question.strip():
+                    content_collection.update_one(
+                        {"content_id": content_data["content_id"]},
+                        {"$push": {"questions": {"question": new_question, "difficulty": new_difficulty, "answer": ""}}},
+                        upsert=True
+                    )
+                    st.success("✅ New question added successfully!")
+                    st.rerun()
+                else:
+                    st.error("⚠ Please enter a question before saving!")
+
     if st.button(LANG_TEXT[lang]["fetch_next_btn"]):
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
@@ -157,7 +174,6 @@ st.title("🔒 User Authentication")
 lang = st.selectbox("🌍 Choose Language", options=["English", "Telugu"])
 
 if not is_authenticated():
-    st.subheader("🔑 Login or Register")
     option = st.radio("Choose an option:", [LANG_TEXT[lang]["login_label"], LANG_TEXT[lang]["register_label"]])
 
     if option == LANG_TEXT[lang]["login_label"]:
@@ -170,13 +186,6 @@ if not is_authenticated():
                 st.rerun()
             else:
                 st.error(message)
-    else:
-        new_username = st.text_input(LANG_TEXT[lang]["new_username"])
-        new_password = st.text_input(LANG_TEXT[lang]["new_password"], type="password")
-        if st.button(LANG_TEXT[lang]["register_btn"]):
-            success, message = register_user(new_username, new_password)
-            st.success(message) if success else st.error(message)
-
 else:
     st.success(f"✅ {LANG_TEXT[lang]['app_title']} - Welcome, {st.session_state['authenticated_user']}!")
     if st.button("Logout"):
