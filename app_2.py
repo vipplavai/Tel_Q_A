@@ -113,11 +113,28 @@ def fetch_next_content():
         st.stop()
 
 # ------------------------------------------------------------------------------
-# 5) CONTENT MANAGEMENT FUNCTION
+# 5) SEARCH FOR CONTENT BY content_id
+# ------------------------------------------------------------------------------
+def fetch_content_by_id(content_id):
+    """Fetches content based on user-input content_id."""
+    found = content_collection.find_one({"content_id": content_id})
+    if found:
+        st.session_state["current_content_id"] = found["content_id"]
+        st.session_state["questions"] = found.get("questions", [])
+    else:
+        st.error(f"❌ No content found for content_id: {content_id}")
+
+# ------------------------------------------------------------------------------
+# 6) CONTENT MANAGEMENT FUNCTION
 # ------------------------------------------------------------------------------
 def content_management():
     """Manages content fetching, editing, adding, and deleting."""
     st.subheader("📖 Q & A Content Manager")
+
+    # **NEW: Search Box for Content ID**
+    search_id = st.text_input("🔍 Search Content by ID:")
+    if st.button("Search"):
+        fetch_content_by_id(search_id)
 
     if "current_content_id" not in st.session_state:
         fetch_next_content()
@@ -131,7 +148,7 @@ def content_management():
             questions_list = content_data.get("questions", [])
             st.write(f"📌 **Total Questions:** {len(questions_list)}")
 
-            # 5a) EDIT & DELETE QUESTIONS
+            # Editing & Deleting Questions
             updated_questions = []
             delete_indices = []
             for idx, q in enumerate(questions_list, start=1):
@@ -162,22 +179,6 @@ def content_management():
                     st.success("✅ Selected questions deleted successfully!")
                     st.rerun()
 
-            # 5b) ADD NEW QUESTION
-            new_question = st.text_area("Enter New Question:", height=100)
-            new_difficulty = st.selectbox("Select Difficulty Level:", ["easy", "medium", "hard"])
-            if st.button("Save Question"):
-                if new_question.strip():
-                    content_collection.update_one(
-                        {"content_id": content_data["content_id"]},
-                        {"$push": {"questions": {"question": new_question, "difficulty": new_difficulty, "answer": ""}}},
-                        upsert=True
-                    )
-                    log_user_action(content_data["content_id"], "added question")
-                    st.success("✅ New question added successfully!")
-                    st.rerun()
-                else:
-                    st.error("⚠ Please enter a question before saving!")
-
     if st.button("Fetch Next Content"):
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
         log_user_action(st.session_state["current_content_id"], "skipped")
@@ -186,14 +187,14 @@ def content_management():
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 6) MAIN STREAMLIT APP: LOGIN & AUTHENTICATION
+# 7) MAIN STREAMLIT APP: LOGIN & AUTHENTICATION
 # ------------------------------------------------------------------------------
 st.title("🔒 User Authentication")
 
 if not is_authenticated():
     st.subheader("🔑 Login or Register")
     option = st.radio("Choose an option:", ["Login", "Register"])
-    
+
     if option == "Login":
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -204,16 +205,9 @@ if not is_authenticated():
                 st.rerun()
             else:
                 st.error(message)
-    else:
-        new_username = st.text_input("New Username")
-        new_password = st.text_input("New Password", type="password")
-        if st.button("Register"):
-            success, message = register_user(new_username, new_password)
-            st.success(message) if success else st.error(message)
-
 else:
     st.success(f"✅ Welcome, {st.session_state['authenticated_user']}!")
     if st.button("Logout"):
         logout_user()
         st.rerun()
-    content_management() 
+    content_management()

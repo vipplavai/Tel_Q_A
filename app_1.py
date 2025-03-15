@@ -4,7 +4,51 @@ import bcrypt
 from datetime import datetime
 
 # ------------------------------------------------------------------------------
-# 1) MONGODB CONNECTION
+# 1) LANGUAGE SUPPORT (English & Telugu)
+# ------------------------------------------------------------------------------
+LANG_TEXT = {
+    "English": {
+        "app_title": "📖 Question Inserter Tool @vipplavAI",
+        "login_label": "Login",
+        "register_label": "Register",
+        "new_username": "New Username:",
+        "new_password": "New Password:",
+        "register_btn": "Register",
+        "login_username": "Username:",
+        "login_password": "Password:",
+        "login_btn": "Login",
+        "search_id": "Search content_id:",
+        "search_btn": "Search",
+        "content_id_retrieved": "📜 Retrieved Content (ID: {content_id})",
+        "content_box_label": "Content:",
+        "total_questions": "📌 **Total Questions:** {count}",
+        "add_new_question_subheader": "📝 Add a New Question",
+        "fetch_next_btn": "Fetch Next Content",
+        "instructions_btn": "Instructions"
+    },
+    "Telugu": {
+        "app_title": "📖 ప్రశ్న ఇన్సర్టర్ సాధనం @vipplavAI",
+        "login_label": "లాగిన్",
+        "register_label": "రిజిస్టర్",
+        "new_username": "క్రొత్త యూజర్ పేరు:",
+        "new_password": "క్రొత్త పాస్వర్డ్:",
+        "register_btn": "రిజిస్టర్",
+        "login_username": "యూజర్ పేరు:",
+        "login_password": "పాస్వర్డ్:",
+        "login_btn": "లాగిన్",
+        "search_id": "కంటెంట్ ఐడి వెతకండి:",
+        "search_btn": "వెతకండి",
+        "content_id_retrieved": "📜 తిరిగి పొందిన కంటెంట్ (ID: {content_id})",
+        "content_box_label": "కంటెంట్:",
+        "total_questions": "📌 **మొత్తం ప్రశ్నలు:** {count}",
+        "add_new_question_subheader": "📝 కొత్త ప్రశ్న చేర్చండి",
+        "fetch_next_btn": "తదుపరి కంటెంట్ తీసుకురండి",
+        "instructions_btn": "నిర్దేశాలు"
+    }
+}
+
+# ------------------------------------------------------------------------------
+# 2) MONGODB CONNECTION
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def init_connection():
@@ -16,7 +60,7 @@ users_collection = db["users"]
 content_collection = db["content_data"]
 
 # ------------------------------------------------------------------------------
-# 2) USER AUTHENTICATION FUNCTIONS (USING bcrypt)
+# 3) USER AUTHENTICATION FUNCTIONS (USING bcrypt)
 # ------------------------------------------------------------------------------
 def hash_password(password):
     """Hash a password using bcrypt."""
@@ -67,53 +111,7 @@ def logout_user():
     st.session_state.pop("authenticated_user", None)
 
 # ------------------------------------------------------------------------------
-# 3) LOG USER ACTIONS
-# ------------------------------------------------------------------------------
-def log_user_action(content_id, action):
-    """Logs user actions such as skipping, editing, and adding questions."""
-    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    content_collection.update_one(
-        {"content_id": content_id},
-        {
-            "$push": {
-                "users": {
-                    "username": st.session_state["authenticated_user"],
-                    "action": action,
-                    "datetime": timestamp_str
-                }
-            }
-        },
-        upsert=True
-    )
-
-# ------------------------------------------------------------------------------
-# 4) FETCH NEXT CONTENT
-# ------------------------------------------------------------------------------
-def fetch_next_content():
-    """Fetches the next content based on priority: empty questions → less than 6 questions → skipped items."""
-    if "skipped_ids" not in st.session_state:
-        st.session_state["skipped_ids"] = []
-
-    query_empty = {"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}}
-    doc = content_collection.find_one(query_empty)
-
-    if not doc:
-        query_lt6 = {"$expr": {"$lt": [{"$size": "$questions"}, 6]}, "content_id": {"$nin": st.session_state["skipped_ids"]}}
-        doc = content_collection.find_one(query_lt6)
-
-    if not doc and st.session_state["skipped_ids"]:
-        skipped_id = st.session_state["skipped_ids"].pop(0)
-        doc = content_collection.find_one({"content_id": skipped_id})
-
-    if doc:
-        st.session_state["current_content_id"] = doc["content_id"]
-        st.session_state["questions"] = doc.get("questions", [])
-    else:
-        st.warning("✅ No more content available to process!")
-        st.stop()
-
-# ------------------------------------------------------------------------------
-# 5) SEARCH FOR CONTENT BY content_id
+# 4) SEARCH FOR CONTENT BY content_id
 # ------------------------------------------------------------------------------
 def fetch_content_by_id(content_id):
     """Fetches content based on user-input content_id."""
@@ -125,89 +123,63 @@ def fetch_content_by_id(content_id):
         st.error(f"❌ No content found for content_id: {content_id}")
 
 # ------------------------------------------------------------------------------
-# 6) CONTENT MANAGEMENT FUNCTION
+# 5) CONTENT MANAGEMENT FUNCTION
 # ------------------------------------------------------------------------------
-def content_management():
+def content_management(lang):
     """Manages content fetching, editing, adding, and deleting."""
-    st.subheader("📖 Q & A Content Manager")
+    st.subheader(LANG_TEXT[lang]["app_title"])
 
-    # **NEW: Search Box for Content ID**
-    search_id = st.text_input("🔍 Search Content by ID:")
-    if st.button("Search"):
+    # **Search Box for Content ID**
+    search_id = st.text_input(LANG_TEXT[lang]["search_id"])
+    if st.button(LANG_TEXT[lang]["search_btn"]):
         fetch_content_by_id(search_id)
-
-    if "current_content_id" not in st.session_state:
-        fetch_next_content()
 
     if "current_content_id" in st.session_state:
         content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
         if content_data:
-            st.subheader(f"📜 Content (ID: {content_data['content_id']})")
-            st.text_area("Content:", value=content_data.get("content", ""), height=300, disabled=True)
-
+            st.subheader(LANG_TEXT[lang]["content_id_retrieved"].format(content_id=content_data['content_id']))
+            st.text_area(LANG_TEXT[lang]["content_box_label"], value=content_data.get("content", ""), height=300, disabled=True)
+            
             questions_list = content_data.get("questions", [])
-            st.write(f"📌 **Total Questions:** {len(questions_list)}")
+            st.write(LANG_TEXT[lang]["total_questions"].format(count=len(questions_list)))
 
-            # Editing & Deleting Questions
-            updated_questions = []
-            delete_indices = []
-            for idx, q in enumerate(questions_list, start=1):
-                col1, col2 = st.columns([8, 1])
-                with col1:
-                    question_text = st.text_area(f"Edit Question {idx}", value=q["question"], key=f"edit_q_{idx}")
-                    difficulty = st.selectbox(f"Difficulty {idx}", ["easy", "medium", "hard"], 
-                                              index=["easy", "medium", "hard"].index(q["difficulty"]), key=f"edit_d_{idx}")
-                with col2:
-                    delete_flag = st.checkbox(f"🗑️", key=f"delete_{idx}")
-                    if delete_flag:
-                        delete_indices.append(idx - 1)
-
-                answer_text = q.get("answer", "")
-                updated_questions.append({"question": question_text, "difficulty": difficulty, "answer": answer_text})
-
-            if st.button("Save Changes"):
-                content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": updated_questions}})
-                log_user_action(content_data["content_id"], "edited questions")
-                st.success("✅ Changes saved successfully!")
-                st.rerun()
-
-            if delete_indices:
-                if st.button("Delete Selected Questions"):
-                    new_questions = [q for i, q in enumerate(questions_list) if i not in delete_indices]
-                    content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": new_questions}})
-                    log_user_action(content_data["content_id"], "deleted questions")
-                    st.success("✅ Selected questions deleted successfully!")
-                    st.rerun()
-
-    if st.button("Fetch Next Content"):
-        st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
-        log_user_action(st.session_state["current_content_id"], "skipped")
+    if st.button(LANG_TEXT[lang]["fetch_next_btn"]):
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 7) MAIN STREAMLIT APP: LOGIN & AUTHENTICATION
+# 6) MAIN STREAMLIT APP: LOGIN & AUTHENTICATION
 # ------------------------------------------------------------------------------
 st.title("🔒 User Authentication")
 
+# Language Selection
+lang = st.selectbox("🌍 Choose Language", options=["English", "Telugu"])
+
 if not is_authenticated():
     st.subheader("🔑 Login or Register")
-    option = st.radio("Choose an option:", ["Login", "Register"])
+    option = st.radio("Choose an option:", [LANG_TEXT[lang]["login_label"], LANG_TEXT[lang]["register_label"]])
 
-    if option == "Login":
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
+    if option == LANG_TEXT[lang]["login_label"]:
+        username = st.text_input(LANG_TEXT[lang]["login_username"])
+        password = st.text_input(LANG_TEXT[lang]["login_password"], type="password")
+        if st.button(LANG_TEXT[lang]["login_btn"]):
             success, message = authenticate_user(username, password)
             if success:
                 login_user(username)
                 st.rerun()
             else:
                 st.error(message)
+    else:
+        new_username = st.text_input(LANG_TEXT[lang]["new_username"])
+        new_password = st.text_input(LANG_TEXT[lang]["new_password"], type="password")
+        if st.button(LANG_TEXT[lang]["register_btn"]):
+            success, message = register_user(new_username, new_password)
+            st.success(message) if success else st.error(message)
+
 else:
-    st.success(f"✅ Welcome, {st.session_state['authenticated_user']}!")
+    st.success(f"✅ {LANG_TEXT[lang]['app_title']} - Welcome, {st.session_state['authenticated_user']}!")
     if st.button("Logout"):
         logout_user()
         st.rerun()
-    content_management()
+    content_management(lang)
