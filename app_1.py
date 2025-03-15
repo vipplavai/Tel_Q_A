@@ -15,67 +15,7 @@ users_collection = db["users"]
 content_collection = db["content_data"]
 
 # ------------------------------------------------------------------------------
-# 2) LANGUAGE SELECTION (English / Telugu)
-# ------------------------------------------------------------------------------
-LANGUAGES = {
-    "English": {
-        "title": "🔒 User Authentication",
-        "username_prompt": "Enter your Username to Login:",
-        "login_button": "Login",
-        "logout_button": "Logout",
-        "content_manager": "📖 Q & A Content Manager",
-        "search_placeholder": "🔍 Search Content by ID:",
-        "search_button": "Search",
-        "retrieved_content": "📜 Retrieved Content",
-        "total_questions": "📌 Total Questions:",
-        "edit_question": "Edit Question",
-        "delete": "🗑 Delete",
-        "save_changes": "Save Changes",
-        "delete_success": "✅ Deleted selected questions!",
-        "add_question": "📝 Add a New Question",
-        "enter_question": "Enter New Question:",
-        "save_question": "Save Question",
-        "skip_fetch": "Skip & Fetch Next Content",
-        "success_question": "✅ New question added successfully!",
-        "empty_warning": "⚠️ Please enter a question before saving!",
-        "no_more_content": "✅ No more content available to process!",
-        "welcome_message": "✅ Welcome, ",
-    },
-    "Telugu": {
-        "title": "🔒 వినియోగదారుని ప్రామాణీకరణ",
-        "username_prompt": "మీ వినియోగదారు పేరు నమోదు చేయండి:",
-        "login_button": "ప్రవేశించండి",
-        "logout_button": "లాగ్ అవుట్",
-        "content_manager": "📖 ప్రశ్నలు & సమాధానాలు కంటెంట్ మేనేజర్",
-        "search_placeholder": "🔍 ID ద్వారా కంటెంట్ శోధించండి:",
-        "search_button": "శోధించండి",
-        "retrieved_content": "📜 లభించిన కంటెంట్",
-        "total_questions": "📌 మొత్తం ప్రశ్నలు:",
-        "edit_question": "ప్రశ్నను మార్చండి",
-        "delete": "🗑 తొలగించండి",
-        "save_changes": "మార్పులను భద్రపరచండి",
-        "delete_success": "✅ ఎంచుకున్న ప్రశ్నలు తొలగించబడ్డాయి!",
-        "add_question": "📝 కొత్త ప్రశ్నను జోడించండి",
-        "enter_question": "కొత్త ప్రశ్నను నమోదు చేయండి:",
-        "save_question": "ప్రశ్నను భద్రపరచండి",
-        "skip_fetch": "దాటవేసి తదుపరి కంటెంట్‌ను పొందండి",
-        "success_question": "✅ కొత్త ప్రశ్న విజయవంతంగా జోడించబడింది!",
-        "empty_warning": "⚠️ దయచేసి ప్రశ్నను నమోదు చేయండి!",
-        "no_more_content": "✅ ప్రాసెస్ చేయడానికి మరో కంటెంట్ లేదు!",
-        "welcome_message": "✅ స్వాగతం, ",
-    }
-}
-
-if "language" not in st.session_state:
-    st.session_state["language"] = "English"
-
-def get_text(key):
-    return LANGUAGES[st.session_state["language"]][key]
-
-st.sidebar.selectbox("🌍 Select Language", ["English", "Telugu"], key="language")
-
-# ------------------------------------------------------------------------------
-# 3) USER AUTHENTICATION (Username-Only Login)
+# 2) USER AUTHENTICATION (Username-Only Login)
 # ------------------------------------------------------------------------------
 def is_authenticated():
     return "authenticated_user" in st.session_state
@@ -87,38 +27,73 @@ def logout_user():
     st.session_state.pop("authenticated_user", None)
 
 def authenticate_or_register_user(username):
+    """Logs in an existing user or registers a new one automatically."""
     if not users_collection.find_one({"username": username}):
-        users_collection.insert_one({"username": username})  
+        users_collection.insert_one({"username": username})  # Auto-register if new user
     login_user(username)
 
 # ------------------------------------------------------------------------------
-# 4) FETCH NEXT CONTENT (Prioritizing Empty Questions)
+# 3) FETCH NEXT CONTENT (Prioritizing Empty Questions)
 # ------------------------------------------------------------------------------
 def fetch_next_content():
     if "skipped_ids" not in st.session_state:
         st.session_state["skipped_ids"] = []
 
+    # Priority 1: Fetch content with empty questions
     doc = content_collection.find_one({"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
+
+    # Priority 2: Fetch content with <6 questions
     if not doc:
         doc = content_collection.find_one({"$expr": {"$lt": [{"$size": "$questions"}, 6]}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
+
+    # Priority 3: Fetch skipped content
     if not doc and st.session_state["skipped_ids"]:
         doc = content_collection.find_one({"content_id": st.session_state["skipped_ids"].pop(0)})
 
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
-        st.session_state["new_question"] = ""  # Ensure new input is cleared
     else:
-        st.warning(get_text("no_more_content"))
+        st.warning("✅ No more content available to process!")
 
 # ------------------------------------------------------------------------------
-# 5) CONTENT MANAGEMENT FUNCTION
+# 4) SEARCH FOR CONTENT BY `content_id`
+# ------------------------------------------------------------------------------
+def fetch_content_by_id(content_id):
+    found = content_collection.find_one({"content_id": content_id})
+    if found:
+        st.session_state["current_content_id"] = found["content_id"]
+        st.session_state["questions"] = found.get("questions", [])
+    else:
+        st.error(f"❌ No content found for content_id: {content_id}")
+
+# ------------------------------------------------------------------------------
+# 5) LOG USER ACTIONS
+# ------------------------------------------------------------------------------
+def log_user_action(content_id, action):
+    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    content_collection.update_one(
+        {"content_id": content_id},
+        {
+            "$push": {
+                "users": {
+                    "username": st.session_state["authenticated_user"],
+                    "action": action,
+                    "datetime": timestamp_str
+                }
+            }
+        },
+        upsert=True
+    )
+
+# ------------------------------------------------------------------------------
+# 6) CONTENT MANAGEMENT FUNCTION
 # ------------------------------------------------------------------------------
 def content_management():
-    st.subheader(get_text("content_manager"))
+    st.subheader("📖 Q & A Content Manager")
 
-    search_id = st.text_input(get_text("search_placeholder"))
-    if st.button(get_text("search_button")):
+    search_id = st.text_input("🔍 Search Content by ID:")
+    if st.button("Search"):
         fetch_content_by_id(search_id)
 
     if "current_content_id" not in st.session_state:
@@ -126,47 +101,74 @@ def content_management():
 
     if "current_content_id" in st.session_state:
         content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
-        st.subheader(f"{get_text('retrieved_content')} (ID: {content_data['content_id']})")
+        st.subheader(f"📜 Retrieved Content (ID: {content_data['content_id']})")
         st.text_area("Content:", value=content_data.get("content", ""), height=300, disabled=True)
 
         questions = content_data.get("questions", [])
-        st.write(f"{get_text('total_questions')} {len(questions)}")
+        st.write(f"📌 **Total Questions:** {len(questions)}")
 
+        updated_questions = []
+        delete_indices = []
         for idx, q in enumerate(questions, start=1):
-            st.text_area(f"{get_text('edit_question')} {idx}", value=q["question"], key=f"edit_q_{idx}")
+            question_text = st.text_area(f"Edit Question {idx}", value=q["question"], key=f"edit_q_{idx}")
+            delete_flag = st.checkbox(f"🗑 Delete {idx}", key=f"delete_{idx}")
+            if delete_flag:
+                delete_indices.append(idx - 1)
+            updated_questions.append({"question": question_text})
 
-        st.subheader(get_text("add_question"))
-        new_question = st.text_area(get_text("enter_question"), key="new_question")
+        if st.button("Save Changes"):
+            content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": updated_questions}})
+            log_user_action(content_data["content_id"], "edited questions")
+            st.success("✅ Changes saved successfully!")
+            st.rerun()
 
-        if st.button(get_text("save_question")):
+        if delete_indices:
+            new_questions = [q for i, q in enumerate(questions) if i not in delete_indices]
+            content_collection.update_one({"content_id": content_data["content_id"]}, {"$set": {"questions": new_questions}})
+            log_user_action(content_data["content_id"], "deleted questions")
+            st.success("✅ Deleted selected questions!")
+            st.rerun()
+
+        st.subheader("📝 Add a New Question")
+        new_question = st.text_area("Enter New Question:")
+        if st.button("Save Question"):
             if new_question.strip():
-                content_collection.update_one({"content_id": content_data["content_id"]}, {"$push": {"questions": {"question": new_question}}}, upsert=True)
-                st.success(get_text("success_question"))
-                st.session_state["new_question"] = ""  # Reset the input field
+                content_collection.update_one(
+                    {"content_id": content_data["content_id"]},
+                    {"$push": {"questions": {"question": new_question}}},
+                    upsert=True
+                )
+                log_user_action(content_data["content_id"], "added question")
+                st.success("✅ New question added successfully!")
                 st.rerun()
+            else:
+                st.error("⚠️ Please enter a question before saving!")
 
-    if st.button(get_text("skip_fetch")):
+    if st.button("Skip & Fetch Next Content"):
+        log_user_action(st.session_state["current_content_id"], "skipped")
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
-        st.session_state.pop("current_content_id", None)
+        st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
-        st.session_state["new_question"] = ""  # Clear input field
         fetch_next_content()
         st.rerun()
 
 # ------------------------------------------------------------------------------
-# 6) MAIN APP: LOGIN
+# 7) MAIN APP: LOGIN & AUTHENTICATION (USERNAME ONLY)
 # ------------------------------------------------------------------------------
-st.title(get_text("title"))
+st.title("🔒 User Authentication")
 
 if not is_authenticated():
-    username = st.text_input(get_text("username_prompt"))
-    if st.button(get_text("login_button")) and username.strip():
-        authenticate_or_register_user(username)
-        fetch_next_content()
-        st.rerun()
+    username = st.text_input("Enter your Username to Login:")
+    if st.button("Login"):
+        if username.strip():
+            authenticate_or_register_user(username)  # Auto-login or register new user
+            fetch_next_content()  # Fetch next available content after login
+            st.rerun()
+        else:
+            st.error("⚠️ Please enter a username to continue.")
 else:
-    st.success(f"{get_text('welcome_message')} {st.session_state['authenticated_user']}!")
-    if st.button(get_text("logout_button")):
+    st.success(f"✅ Welcome, {st.session_state['authenticated_user']}!")
+    if st.button("Logout"):
         logout_user()
         st.rerun()
     content_management()
