@@ -101,8 +101,8 @@ def log_user_action(content_id, action, username):
 # ------------------------------------------------------------------------------
 # 4) App Title
 # ------------------------------------------------------------------------------
-st.write("Running Streamlit version:", st.__version__)
-st.title("📖 Fetch & Edit Content from MongoDB (with Registration/Login)")
+# st.write("Running Streamlit version:", st.__version__)
+st.title("📖 Question inserter tool @vipplavAI")
 
 # ------------------------------------------------------------------------------
 # 5) Check if user is authenticated in session
