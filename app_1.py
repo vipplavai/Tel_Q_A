@@ -1,6 +1,6 @@
 import streamlit as st
 from pymongo import MongoClient
-from werkzeug.security import generate_password_hash, check_password_hash
+import bcrypt
 from datetime import datetime
 
 # ------------------------------------------------------------------------------
@@ -12,26 +12,34 @@ def init_connection():
 
 client = init_connection()
 db = client["Q_and_A"]
-users_collection = db["users"]  # Collection for user accounts
+users_collection = db["users"]  
 content_collection = db["content_data"]
 
 # ------------------------------------------------------------------------------
-# 2) USER AUTHENTICATION FUNCTIONS
+# 2) USER AUTHENTICATION FUNCTIONS (USING bcrypt)
 # ------------------------------------------------------------------------------
+def hash_password(password):
+    """Hash a password using bcrypt."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+def verify_password(password, hashed_password):
+    """Verify password against stored bcrypt hash."""
+    return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+
 def register_user(username, password):
     """Registers a new user by hashing the password and storing it in MongoDB."""
     existing_user = users_collection.find_one({"username": username})
     if existing_user:
         return False, "❌ Username already exists."
 
-    hashed_password = generate_password_hash(password)  # Hash password
+    hashed_password = hash_password(password)
     users_collection.insert_one({"username": username, "password": hashed_password})
     return True, "✅ Registration successful! Please log in."
 
 def authenticate_user(username, password):
-    """Authenticates a user by checking hashed passwords."""
+    """Authenticates a user by verifying bcrypt-hashed passwords."""
     user = users_collection.find_one({"username": username})
-    if not user or not check_password_hash(user["password"], password):
+    if not user or not verify_password(password, user["password"]):
         return False, "❌ Invalid username or password."
 
     return True, "✅ Login successful!"
