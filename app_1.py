@@ -1,17 +1,7 @@
 import streamlit as st
 from pymongo import MongoClient
 from datetime import datetime
-
-# For debugging, see actual Streamlit version
-st.write("Running Streamlit version:", st.__version__)
-
-# ------------------------------------------------------------------------------
-# 0) USERNAME PROMPT (MUST ENTER BEFORE PROCEEDING)
-# ------------------------------------------------------------------------------
-username = st.text_input("Enter your username to proceed:")
-if not username.strip():
-    st.warning("Please enter a username to continue.")
-    st.stop()  # Prevent further interaction if no username provided
+import bcrypt  # You need to ensure bcrypt is installed
 
 # ------------------------------------------------------------------------------
 # 1) Initialize connection to MongoDB
@@ -21,16 +11,65 @@ def init_connection():
     return MongoClient(st.secrets["mongo"]["uri"])
 
 client = init_connection()
-db = client["Q_and_A"]         # Database Name
-collection = db["content_data"]  # Collection Name
+db = client["Q_and_A"]  # Database Name
+
+# Collections
+content_collection = db["content_data"]  # content Q&A
+users_collection = db["users"]           # new for storing user accounts
 
 # ------------------------------------------------------------------------------
-# 2) Helper: Log user actions (skip, add, edit) to the "users" array
+# 2) Authentication Helpers
 # ------------------------------------------------------------------------------
-def log_user_action(content_id, action):
-    """Append a record with username, action, and timestamp to the 'users' array."""
+def hash_password(password: str) -> bytes:
+    """Generate salted hash for the given password."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+def check_password(password: str, hashed: bytes) -> bool:
+    """Compare a plain password with the hashed password."""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed)
+
+def register_user(username: str, password: str) -> bool:
+    """
+    Attempt to register a new user. 
+    Returns True if registration is successful, False if username already exists.
+    """
+    existing_user = users_collection.find_one({"username": username})
+    if existing_user:
+        return False  # username already taken
+
+    hashed_pw = hash_password(password)
+    new_user = {
+        "username": username,
+        "hashed_password": hashed_pw,
+        "activity_logs": []  # we can store user logs here
+    }
+    users_collection.insert_one(new_user)
+    return True
+
+def login_user(username: str, password: str) -> bool:
+    """
+    Attempt to log in user. 
+    Returns True if credentials match, else False.
+    """
+    user_doc = users_collection.find_one({"username": username})
+    if not user_doc:
+        return False
+
+    hashed_pw = user_doc["hashed_password"]
+    if check_password(password, hashed_pw):
+        return True
+    return False
+
+# ------------------------------------------------------------------------------
+# 3) Log user actions (skip, add, edit, delete) to BOTH the content item and user's record
+# ------------------------------------------------------------------------------
+def log_user_action(content_id, action, username):
+    """Append a record with username, action, and timestamp 
+       to both the content document and the user's activity_logs."""
     timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    collection.update_one(
+
+    # 3a) Log to the content_data 'users' array
+    content_collection.update_one(
         {"content_id": content_id},
         {
             "$push": {
@@ -44,23 +83,90 @@ def log_user_action(content_id, action):
         upsert=True
     )
 
+    # 3b) Also log in the user's own doc:
+    users_collection.update_one(
+        {"username": username},
+        {
+            "$push": {
+                "activity_logs": {
+                    "content_id": content_id,
+                    "action": action,
+                    "datetime": timestamp_str
+                }
+            }
+        }
+    )
+
 # ------------------------------------------------------------------------------
-# 3) Session init: track "skipped_ids"
+# 4) App Title
 # ------------------------------------------------------------------------------
+st.write("Running Streamlit version:", st.__version__)
+st.title("📖 Fetch & Edit Content from MongoDB (with Registration/Login)")
+
+# ------------------------------------------------------------------------------
+# 5) Check if user is authenticated in session
+# ------------------------------------------------------------------------------
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+if "username" not in st.session_state:
+    st.session_state["username"] = None
+
+# ------------------------------------------------------------------------------
+# 6) If user is not logged in, show register/login
+# ------------------------------------------------------------------------------
+if not st.session_state["logged_in"]:
+    # let user pick between login and registration
+    auth_choice = st.radio("Choose an action:", ["Login", "Register"])
+
+    if auth_choice == "Register":
+        reg_username = st.text_input("New Username:", key="reg_user")
+        reg_password = st.text_input("New Password:", type="password", key="reg_pass")
+        if st.button("Register"):
+            if reg_username.strip() and reg_password.strip():
+                success = register_user(reg_username, reg_password)
+                if success:
+                    st.success("User registered successfully! Please login now.")
+                else:
+                    st.error("Username already exists. Please choose a different name.")
+            else:
+                st.error("Please enter both username and password.")
+
+    elif auth_choice == "Login":
+        log_username = st.text_input("Username:", key="log_user")
+        log_password = st.text_input("Password:", type="password", key="log_pass")
+        if st.button("Login"):
+            if log_username.strip() and log_password.strip():
+                success = login_user(log_username, log_password)
+                if success:
+                    st.session_state["logged_in"] = True
+                    st.session_state["username"] = log_username
+                    st.experimental_rerun()
+                else:
+                    st.error("Invalid username or password.")
+            else:
+                st.error("Please enter both username and password.")
+
+    st.stop()  # if not logged in, do not show anything else
+else:
+    st.markdown(f"**Welcome, {st.session_state['username']}!**")
+
+# ------------------------------------------------------------------------------
+# 7) Once logged in, the rest of the app is accessible
+# ------------------------------------------------------------------------------
+username = st.session_state["username"]
+
+# Create or get the "skipped_ids" in session
 if "skipped_ids" not in st.session_state:
     st.session_state["skipped_ids"] = []
 
 # ------------------------------------------------------------------------------
-# 4) SEARCH BOX
+# 8) SEARCH BOX
 # ------------------------------------------------------------------------------
-st.title("📖 Fetch & Edit Content from MongoDB")
-
-st.write("Use the box below to fetch a specific content_id directly.")
 search_id = st.text_input("Search content_id:")
 search_button = st.button("Search")
 
 if search_button:
-    found = collection.find_one({"content_id": search_id})
+    found = content_collection.find_one({"content_id": search_id})
     if found:
         st.session_state["current_content_id"] = found["content_id"]
         st.session_state["questions"] = found.get("questions", [])
@@ -68,37 +174,30 @@ if search_button:
         st.error(f"No content found for content_id: {search_id}")
 
 # ------------------------------------------------------------------------------
-# 5) AUTO-FETCH LOGIC
-#
-# First: content where questions array is empty
-# If none found: content with questions < 6
-# If none found: use st.session_state["skipped_ids"] (FIFO)
+# 9) AUTO-FETCH LOGIC
 # ------------------------------------------------------------------------------
 def fetch_next_content():
     """Sets st.session_state["current_content_id"] to the next appropriate item
        (empty questions, else < 6 questions, else from skip list)."""
-    # 5a) Attempt to get doc with empty questions, excluding anything we've skipped
     query_empty = {
         "questions": {"$size": 0},
         "content_id": {"$nin": st.session_state["skipped_ids"]},
     }
-    doc = collection.find_one(query_empty)
+    doc = content_collection.find_one(query_empty)
     if not doc:
-        # 5b) If none found, try doc with questions < 6
+        # Next, try doc with questions < 6
         query_lt6 = {
             "$expr": {"$lt": [{"$size": "$questions"}, 6]},
             "content_id": {"$nin": st.session_state["skipped_ids"]},
         }
-        doc = collection.find_one(query_lt6)
+        doc = content_collection.find_one(query_lt6)
     
-    # 5c) If still none found, pull from skip list if available
     if not doc:
+        # Then from skip list if available
         if st.session_state["skipped_ids"]:
-            # Take the earliest item we skipped
             skipped_id = st.session_state["skipped_ids"].pop(0)
-            doc = collection.find_one({"content_id": skipped_id})
+            doc = content_collection.find_one({"content_id": skipped_id})
     
-    # 5d) If we finally have doc, set it up. Otherwise none is found
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
@@ -106,28 +205,30 @@ def fetch_next_content():
         st.warning("No more items. Nothing with empty or < 6 questions, and no skipped items remain.")
         st.stop()
 
-# If no "current_content_id" in session, attempt to fetch next
 if "current_content_id" not in st.session_state:
     fetch_next_content()
 
 # ------------------------------------------------------------------------------
-# 6) SHOW & EDIT THE CURRENT CONTENT
+# 10) SHOW & EDIT THE CURRENT CONTENT
 # ------------------------------------------------------------------------------
 if "current_content_id" in st.session_state:
-    content_data = collection.find_one({"content_id": st.session_state["current_content_id"]})
+    content_data = content_collection.find_one({"content_id": st.session_state["current_content_id"]})
     if content_data:
         st.subheader(f"📜 Retrieved Content (ID: {content_data['content_id']})")
+
         st.text_area("Content:", value=content_data.get("content", ""), height=300, disabled=True)
 
         questions_list = content_data.get("questions", [])
         st.write(f"📌 **Total Questions:** {len(questions_list)}")
 
-        # 6a) EDIT EXISTING QUESTIONS
+        # 10a) EDIT/DELETE EXISTING QUESTIONS
         if questions_list:
             st.write("📋 **Existing Questions (Editable):**")
+
             updated_questions = []
             for idx, q in enumerate(questions_list, start=1):
                 st.write(f"**Question {idx}:**")
+                
                 question_text = st.text_area(
                     f"Edit Question {idx}",
                     value=q["question"],
@@ -140,29 +241,46 @@ if "current_content_id" in st.session_state:
                     key=f"edit_d_{idx}"
                 )
                 answer_text = q.get("answer", "")
-                updated_questions.append({
-                    "question": question_text,
-                    "difficulty": difficulty,
-                    "answer": answer_text
-                })
-            
+
+                # "Delete this question" checkbox or button
+                delete_flag = st.checkbox(f"Delete question {idx}", key=f"delete_{idx}")
+
+                # Only append to updated list if user does not want to delete
+                if not delete_flag:
+                    updated_questions.append({
+                        "question": question_text,
+                        "difficulty": difficulty,
+                        "answer": answer_text
+                    })
+                else:
+                    st.warning(f"Marked question {idx} for deletion.")
+
             if st.button("Save Changes"):
-                collection.update_one(
+                # Update DB with whatever remains in updated_questions
+                content_collection.update_one(
                     {"content_id": content_data["content_id"]},
                     {"$set": {"questions": updated_questions}}
                 )
-                log_user_action(content_data["content_id"], "edited questions")
-                st.success("✅ Changes saved successfully!")
-                st.rerun()
 
-        # 6b) ADD NEW QUESTION
+                # If any were deleted, log that
+                if len(updated_questions) < len(questions_list):
+                    log_user_action(content_data["content_id"], "deleted question(s)", username)
+
+                # If any were edited (text changed, etc.), we also consider that an edit
+                if updated_questions != questions_list:
+                    log_user_action(content_data["content_id"], "edited questions", username)
+
+                st.success("✅ Changes saved successfully!")
+                st.experimental_rerun()
+
+        # 10b) ADD NEW QUESTION
         st.subheader("📝 Add a New Question")
         new_question = st.text_area("Enter New Question:", height=100)
         new_difficulty = st.selectbox("Select Difficulty Level:", ["easy", "medium", "hard"])
 
         if st.button("Save Question"):
             if new_question.strip():
-                collection.update_one(
+                content_collection.update_one(
                     {"content_id": content_data["content_id"]},
                     {
                         "$push": {
@@ -171,30 +289,25 @@ if "current_content_id" in st.session_state:
                                 "difficulty": new_difficulty,
                                 "answer": ""
                             }
-                        },
-                        "$set": {"ques_not_avail": False}  # optional, if you still track this
+                        }
                     },
                     upsert=True
                 )
-                log_user_action(content_data["content_id"], "added question")
+                log_user_action(content_data["content_id"], "added question", username)
                 st.success("✅ New question added successfully!")
-                st.rerun()
+                st.experimental_rerun()
             else:
                 st.error("⚠️ Please enter a question before saving!")
 
 # ------------------------------------------------------------------------------
-# 7) FETCH NEXT CONTENT (SKIP) BUTTON
-#
-# If user wants to skip the item entirely (even with zero changes),
-# we store the content_id in "skipped_ids" and fetch the next.
+# 11) FETCH NEXT CONTENT (SKIP) BUTTON
 # ------------------------------------------------------------------------------
 st.subheader("🔄 Fetch Next Content (Skip this one)")
 if st.button("Fetch Next Content"):
     current_id = st.session_state.get("current_content_id")
     if current_id:
-        # Mark that we "skipped" it
         st.session_state["skipped_ids"].append(current_id)
-        log_user_action(current_id, "skipped")
+        log_user_action(current_id, "skipped", username)
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
-    st.rerun()
+    st.experimental_rerun()
