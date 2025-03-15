@@ -39,9 +39,6 @@ def fetch_next_content():
     if "skipped_ids" not in st.session_state:
         st.session_state["skipped_ids"] = []
 
-    # Reset the new question input when fetching new content
-    st.session_state["new_question"] = ""
-
     # Priority 1: Fetch content with empty questions
     doc = content_collection.find_one({"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
 
@@ -56,6 +53,8 @@ def fetch_next_content():
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
+    else:
+        st.warning("✅ No more content available to process!")
 
 # ------------------------------------------------------------------------------
 # 4) SEARCH FOR CONTENT BY `content_id`
@@ -65,7 +64,6 @@ def fetch_content_by_id(content_id):
     if found:
         st.session_state["current_content_id"] = found["content_id"]
         st.session_state["questions"] = found.get("questions", [])
-        st.session_state["new_question"] = ""  # Reset the add question input
     else:
         st.error(f"❌ No content found for content_id: {content_id}")
 
@@ -132,7 +130,7 @@ def content_management():
             st.rerun()
 
         st.subheader("📝 Add a New Question")
-        new_question = st.text_area("Enter New Question:", value=st.session_state.get("new_question", ""), key="new_question")
+        new_question = st.text_area("Enter New Question:")
         if st.button("Save Question"):
             if new_question.strip():
                 content_collection.update_one(
@@ -142,7 +140,6 @@ def content_management():
                 )
                 log_user_action(content_data["content_id"], "added question")
                 st.success("✅ New question added successfully!")
-                st.session_state["new_question"] = ""  # Reset input after adding
                 st.rerun()
             else:
                 st.error("⚠️ Please enter a question before saving!")
