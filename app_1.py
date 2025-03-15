@@ -1,7 +1,7 @@
 import streamlit as st
 from pymongo import MongoClient
 from datetime import datetime
-import bcrypt  # You need to ensure bcrypt is installed
+import bcrypt  # Requires "pip install bcrypt"
 
 # ------------------------------------------------------------------------------
 # 1) Initialize connection to MongoDB
@@ -15,7 +15,7 @@ db = client["Q_and_A"]  # Database Name
 
 # Collections
 content_collection = db["content_data"]  # content Q&A
-users_collection = db["users"]           # new for storing user accounts
+users_collection = db["users"]           # for storing user accounts
 
 # ------------------------------------------------------------------------------
 # 2) Authentication Helpers
@@ -41,7 +41,7 @@ def register_user(username: str, password: str) -> bool:
     new_user = {
         "username": username,
         "hashed_password": hashed_pw,
-        "activity_logs": []  # we can store user logs here
+        "activity_logs": []  # store user logs here
     }
     users_collection.insert_one(new_user)
     return True
@@ -61,7 +61,8 @@ def login_user(username: str, password: str) -> bool:
     return False
 
 # ------------------------------------------------------------------------------
-# 3) Log user actions (skip, add, edit, delete) to BOTH the content item and user's record
+# 3) Log user actions (skip, add, edit, delete) 
+#    to BOTH the content item and the user's record
 # ------------------------------------------------------------------------------
 def log_user_action(content_id, action, username):
     """Append a record with username, action, and timestamp 
@@ -115,7 +116,6 @@ if "username" not in st.session_state:
 # 6) If user is not logged in, show register/login
 # ------------------------------------------------------------------------------
 if not st.session_state["logged_in"]:
-    # let user pick between login and registration
     auth_choice = st.radio("Choose an action:", ["Login", "Register"])
 
     if auth_choice == "Register":
@@ -140,13 +140,15 @@ if not st.session_state["logged_in"]:
                 if success:
                     st.session_state["logged_in"] = True
                     st.session_state["username"] = log_username
-                    st.experimental_rerun()
+                    # Without st.experimental_rerun(), the page won't auto-refresh. 
+                    # You can do st.stop() after setting session states if you wish:
+                    st.stop()
                 else:
                     st.error("Invalid username or password.")
             else:
                 st.error("Please enter both username and password.")
 
-    st.stop()  # if not logged in, do not show anything else
+    st.stop()  # if not logged in, stop here to avoid showing the rest of the app
 else:
     st.markdown(f"**Welcome, {st.session_state['username']}!**")
 
@@ -224,7 +226,6 @@ if "current_content_id" in st.session_state:
         # 10a) EDIT/DELETE EXISTING QUESTIONS
         if questions_list:
             st.write("📋 **Existing Questions (Editable):**")
-
             updated_questions = []
             for idx, q in enumerate(questions_list, start=1):
                 st.write(f"**Question {idx}:**")
@@ -242,7 +243,7 @@ if "current_content_id" in st.session_state:
                 )
                 answer_text = q.get("answer", "")
 
-                # "Delete this question" checkbox or button
+                # "Delete this question" checkbox
                 delete_flag = st.checkbox(f"Delete question {idx}", key=f"delete_{idx}")
 
                 # Only append to updated list if user does not want to delete
@@ -271,7 +272,9 @@ if "current_content_id" in st.session_state:
                     log_user_action(content_data["content_id"], "edited questions", username)
 
                 st.success("✅ Changes saved successfully!")
-                st.experimental_rerun()
+                # Without st.experimental_rerun(), the UI won't auto-refresh.
+                # If you'd like to end and let user refresh:
+                st.stop()
 
         # 10b) ADD NEW QUESTION
         st.subheader("📝 Add a New Question")
@@ -295,7 +298,7 @@ if "current_content_id" in st.session_state:
                 )
                 log_user_action(content_data["content_id"], "added question", username)
                 st.success("✅ New question added successfully!")
-                st.experimental_rerun()
+                st.stop()  # end script; user can refresh for updated view
             else:
                 st.error("⚠️ Please enter a question before saving!")
 
@@ -308,6 +311,6 @@ if st.button("Fetch Next Content"):
     if current_id:
         st.session_state["skipped_ids"].append(current_id)
         log_user_action(current_id, "skipped", username)
-        st.session_state.pop("current_content_id")
+        st.session_state.pop("current_content_id", None)
         st.session_state.pop("questions", None)
-    st.experimental_rerun()
+    st.stop()  # user can refresh to load next
