@@ -199,7 +199,8 @@ L = LANG_TEXT[ st.session_state["language"] ]  # Shortcut to the current lang di
 # ------------------------------------------------------------------------------
 # 5) App Title
 # ------------------------------------------------------------------------------
-st.title(L["app_title"])
+# st.write("Running Streamlit version:", st.__version__)
+st.title("📖 Question inserter tool @vipplavAI")
 
 # ------------------------------------------------------------------------------
 # 6) Check if user is authenticated in session
