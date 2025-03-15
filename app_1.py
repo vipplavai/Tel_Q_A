@@ -39,9 +39,8 @@ def fetch_next_content():
     if "skipped_ids" not in st.session_state:
         st.session_state["skipped_ids"] = []
 
-    # Ensure new_question is initialized before setting
-    if "new_question" not in st.session_state:
-        st.session_state["new_question"] = ""
+    # Reset new_question input field
+    st.session_state["new_question"] = ""
 
     # Priority 1: Fetch content with empty questions
     doc = content_collection.find_one({"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}})
@@ -67,7 +66,7 @@ def fetch_content_by_id(content_id):
         st.session_state["current_content_id"] = found["content_id"]
         st.session_state["questions"] = found.get("questions", [])
 
-        # Ensure new_question is initialized before setting
+        # Reset new_question input field after fetching new content
         st.session_state["new_question"] = ""
     else:
         st.error(f"❌ No content found for content_id: {content_id}")
@@ -155,6 +154,10 @@ def content_management():
         st.session_state["skipped_ids"].append(st.session_state["current_content_id"])
         st.session_state.pop("current_content_id")
         st.session_state.pop("questions", None)
+        
+        # Reset new_question input field when skipping content
+        st.session_state["new_question"] = ""
+
         fetch_next_content()
         st.rerun()
 
