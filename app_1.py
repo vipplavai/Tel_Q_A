@@ -29,20 +29,38 @@ def verify_password(password, hashed_password):
 def register_user(username, password):
     """Registers a new user by hashing the password and storing it in MongoDB."""
     existing_user = users_collection.find_one({"username": username})
+    
     if existing_user:
         return False, "❌ Username already exists."
 
     hashed_password = hash_password(password)
-    users_collection.insert_one({"username": username, "password": hashed_password})
+    
+    # Store password under "hashed_password"
+    users_collection.insert_one({"username": username, "hashed_password": hashed_password})
+    
     return True, "✅ Registration successful! Please log in."
+
 
 def authenticate_user(username, password):
     """Authenticates a user by verifying bcrypt-hashed passwords."""
     user = users_collection.find_one({"username": username})
-    if not user or not verify_password(password, user["password"]):
-        return False, "❌ Invalid username or password."
+    
+    if not user:
+        return False, "❌ Username does not exist."
+
+    # Check if the hashed_password field exists
+    if "hashed_password" not in user:
+        return False, "❌ Password field missing in database. Please contact admin."
+
+    # Extract the hashed password correctly
+    hashed_password = user["hashed_password"]
+
+    # Verify the password using bcrypt
+    if not verify_password(password, hashed_password):
+        return False, "❌ Incorrect password."
 
     return True, "✅ Login successful!"
+
 
 def is_authenticated():
     """Check if a user is logged in by verifying session state."""
