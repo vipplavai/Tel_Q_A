@@ -12,7 +12,7 @@ def init_connection():
 
 client = init_connection()
 db = client["Q_and_A"]
-users_collection = db["users"]  
+users_collection = db["users"]  # Collection for user accounts
 content_collection = db["content_data"]
 
 # ------------------------------------------------------------------------------
@@ -29,17 +29,8 @@ def verify_password(password, hashed_password):
 def register_user(username, password):
     """Registers a new user by hashing the password and storing it in MongoDB."""
     existing_user = users_collection.find_one({"username": username})
-    
     if existing_user:
         return False, "❌ Username already exists."
-
-    hashed_password = hash_password(password)
-    
-    # Ensure password is stored correctly
-    users_collection.insert_one({"username": username, "password": hashed_password})
-    
-    return True, "✅ Registration successful! Please log in."
-
 
     hashed_password = hash_password(password)
     users_collection.insert_one({"username": username, "password": hashed_password})
@@ -53,22 +44,9 @@ def authenticate_user(username, password):
 
     return True, "✅ Login successful!"
 
-def authenticate_user(username, password):
-    """Authenticates a user by verifying bcrypt-hashed passwords."""
-    user = users_collection.find_one({"username": username})
-    
-    # Debugging: Check what the user document contains
-    if not user:
-        return False, "❌ Username does not exist."
-
-    if "password" not in user:
-        return False, "❌ Password field missing in database. Please contact admin."
-
-    if not verify_password(password, user["password"]):
-        return False, "❌ Incorrect password."
-
-    return True, "✅ Login successful!"
-
+def is_authenticated():
+    """Check if a user is logged in by verifying session state."""
+    return "authenticated_user" in st.session_state
 
 def login_user(username):
     """Save logged-in user to session state."""
