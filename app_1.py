@@ -114,16 +114,13 @@ def fetch_next_content():
     if "skipped_ids" not in st.session_state:
         st.session_state["skipped_ids"] = []
 
-    # Priority: Fetch content with empty questions first
     query_empty = {"questions": {"$size": 0}, "content_id": {"$nin": st.session_state["skipped_ids"]}}
     doc = content_collection.find_one(query_empty)
 
-    # Next Priority: Fetch content with < 6 questions
     if not doc:
         query_lt6 = {"$expr": {"$lt": [{"$size": "$questions"}, 6]}, "content_id": {"$nin": st.session_state["skipped_ids"]}}
         doc = content_collection.find_one(query_lt6)
 
-    # Final Priority: Fetch skipped content
     if not doc and st.session_state["skipped_ids"]:
         skipped_id = st.session_state["skipped_ids"].pop(0)
         doc = content_collection.find_one({"content_id": skipped_id})
@@ -131,8 +128,6 @@ def fetch_next_content():
     if doc:
         st.session_state["current_content_id"] = doc["content_id"]
         st.session_state["questions"] = doc.get("questions", [])
-    else:
-        st.warning("✅ No more content available to process!")
 
 # ------------------------------------------------------------------------------
 # 5) CONTENT MANAGEMENT FUNCTION
