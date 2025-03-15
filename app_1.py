@@ -96,7 +96,7 @@ LANG_TEXT = {
 
 INSTRUCTIONS = {
     "English": """\
-3. Framing Quality Questions in Three Segments
+1. Framing Quality Questions in Three Segments
 
 Once the content is displayed, questions must be framed in three difficulty levels:
 
@@ -127,7 +127,7 @@ A: The Eiffel Tower significantly boosted tourism in Paris by becoming an iconic
    and became a symbol of France’s artistic and engineering excellence.
 '''
 
-4. Adding or Editing Questions
+2. Adding or Editing Questions
 
 At least 6 questions must be added per content piece.
 
@@ -145,7 +145,7 @@ Steps to Edit a Question:
 3. Make the necessary changes to the question or answer.
 4. Click Save Changes to update the question.
 
-5. Reviewing and Finalizing Questions
+3. Reviewing and Finalizing Questions
 
 Before submission, ensure all framed questions meet quality standards:
 ✔ Are the questions clear and concise?
@@ -156,7 +156,7 @@ Before submission, ensure all framed questions meet quality standards:
 Once reviewed, click Submit Questions to finalize.
 """,
     "Telugu": """\
-3. మూడు విభాగాలలో నాణ్యమైన ప్రశ్నలను రూపొందించడం
+1. మూడు విభాగాలలో నాణ్యమైన ప్రశ్నలను రూపొందించడం
 
 కంటెంట్ ప్రదర్శించబడిన తర్వాత, ప్రశ్నలను మూడు క్లిష్ట స్థాయిలలో రూపొందించాలి:
 
@@ -188,7 +188,7 @@ Once reviewed, click Submit Questions to finalize.
    మరియు ఫ్రాన్స్ యొక్క కళాత్మక మరియు ఇంజనీరింగ్ నైపుణ్యానికి చిహ్నంగా మారింది.
 '''
 
-4. ప్రశ్నలను జోడించడం లేదా సవరించడం
+2. ప్రశ్నలను జోడించడం లేదా సవరించడం
 
 కంటెంట్ ముక్కకు కనీసం 6 ప్రశ్నలు జోడించాలి.
 
@@ -206,7 +206,7 @@ Once reviewed, click Submit Questions to finalize.
 3. ప్రశ్న లేదా సమాధానానికి అవసరమైన మార్పులు చేయండి.
 4. ప్రశ్నను నవీకరించడానికి మార్పులను సేవ్ చేయి క్లిక్ చేయండి.
 
-5. ప్రశ్నలను సమీక్షించడం మరియు తుది రూపం ఇవ్వడం
+3. ప్రశ్నలను సమీక్షించడం మరియు తుది రూపం ఇవ్వడం
 
 సమర్పణకు ముందు, ఫ్రేమ్ చేయబడిన అన్ని ప్రశ్నలు నాణ్యతా ప్రమాణాలకు అనుగుణంగా ఉన్నాయని నిర్ధారించుకోండి:
 ✔ ప్రశ్నలు స్పష్టంగా మరియు సంక్షిప్తంగా ఉన్నాయా?
